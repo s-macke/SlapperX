@@ -27,7 +27,7 @@ import (
 const (
 	statsLines             = 3
 	movingWindowsSize      = 10 // seconds
-	screenRefreshFrequency = 10 // per second
+	screenRefreshFrequency = 3  // per second
 	screenRefreshInterval  = time.Second / screenRefreshFrequency
 
 	reservedWidthSpace  = 40
@@ -424,10 +424,6 @@ keyPressListenerLoop:
 					break keyPressListenerLoop
 				case 'r':
 					resetStats()
-				case 'k': // up
-					rateChanger <- rateIncreaseStep
-				case 'j':
-					rateChanger <- rateDecreaseStep
 				}
 			}
 		case term.EventError:
@@ -436,26 +432,59 @@ keyPressListenerLoop:
 	}
 }
 
-func ticker(rate uint64, quit <-chan struct{}) (<-chan time.Time, chan<- int64) {
+func getDuration(rate uint64) (time.Duration, int) {
+	var maxrate uint64 = 100
+	multiplicator := rate / maxrate
+	if multiplicator < 1 {
+		multiplicator = 1
+	}
+	rate /= multiplicator
+
+	d := time.Duration(1e9 / rate)
+	return d, int(multiplicator)
+
+}
+
+func ticker(rate uint64, rampuptime time.Duration, quit <-chan struct{}) (<-chan time.Time, chan<- int64) {
 	ticker := make(chan time.Time, 1)
 	rateChanger := make(chan int64, 1)
+	start := time.Now()
+
+	go func() {
+		for ; ; {
+			now := time.Now()
+			elapsed := now.Sub(start)
+			if elapsed.Milliseconds() > rampuptime.Milliseconds() {
+				rateChanger <- int64(rate)
+				return
+			}
+			rateChanger <- (elapsed.Milliseconds() * int64(rate)) / rampuptime.Milliseconds()
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
 
 	// start main workers
 	go func() {
 		desiredRate.Store(int64(rate))
-		tck := time.NewTicker(time.Duration(1e9 / rate))
+		duration, multiplicator := getDuration(rate)
+		tck := time.NewTicker(duration)
 
 		for {
 			select {
 			case r := <-rateChanger:
 				tck.Stop()
-				if newRate := desiredRate.Add(r); newRate > 0 {
-					tck = time.NewTicker(time.Duration(1e9 / newRate))
+				newRate := r
+				desiredRate.Store(r)
+				if newRate > 0 {
+					duration, multiplicator = getDuration(uint64(newRate))
+					tck = time.NewTicker(duration)
 				} else {
 					desiredRate.Store(0)
 				}
 			case t := <-tck.C:
-				ticker <- t
+				for i := 0; i < multiplicator; i++ {
+					ticker <- t
+				}
 			case <-quit:
 				return
 			}
@@ -520,6 +549,7 @@ func main() {
 	rate := flag.Uint64("rate", 50, "Requests per second")
 	miY := flag.Duration("minY", 0, "min on Y axe (default 0ms)")
 	maY := flag.Duration("maxY", 100*time.Millisecond, "max on Y axe")
+	rampup := flag.Duration("rampup", 10*time.Second, "ramp up time")
 	flag.Var(&headerFlags, "H", "HTTP header 'key: value' set on all requests. Repeat for more than one header.")
 	flag.Parse()
 
@@ -546,7 +576,7 @@ func main() {
 	initializeTimingsBucket(buckets)
 
 	quit := make(chan struct{}, 1)
-	ticker, rateChanger := ticker(*rate, quit)
+	ticker, rateChanger := ticker(*rate, *rampup, quit)
 
 	trgt, err := newTargeter(*targets, *base64body)
 	if err != nil {

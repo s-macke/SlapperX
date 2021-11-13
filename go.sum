@@ -1,0 +1,6 @@
+github.com/mattn/go-runewidth v0.0.2 h1:UnlwIPBGaTZfPQ6T1IGzPI0EkYAQmT9fAEJ/poFC63o=
+github.com/mattn/go-runewidth v0.0.2/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
+github.com/nsf/termbox-go v0.0.0-20180129072728-88b7b944be8b h1:juxXUBpBuF6yPbNHz/8Rv997YZIkeDy4AMb9P7xIqOc=
+github.com/nsf/termbox-go v0.0.0-20180129072728-88b7b944be8b/go.mod h1:IuKpRQcYE1Tfu+oAQqaLisqDeXgjyyltCfsaoYN18NQ=
+github.com/wayneashleyberry/terminal-dimensions v1.0.0 h1:LawtS1nqKjAfqrmKOzkcrDLAjSzh38lEhC401JPjQVA=
+github.com/wayneashleyberry/terminal-dimensions v1.0.0/go.mod h1:PW2XrtV6KmKOPhuf7wbtcmw1/IFnC39mryRET2XbxeE=
