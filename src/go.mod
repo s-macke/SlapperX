@@ -1,6 +1,6 @@
 module slapper
 
-go 1.17
+go 1.19
 
 require (
 	github.com/nsf/termbox-go v0.0.0-20180129072728-88b7b944be8b
