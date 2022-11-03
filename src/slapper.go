@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-	"slapper/httpfile"
+	"slapper/src/httpfile"
 	"time"
 )
 

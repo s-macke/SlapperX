@@ -17,3 +17,5 @@ dist
 run.sh
 
 bin/*
+
+dist/
