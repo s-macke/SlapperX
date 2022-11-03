@@ -4,34 +4,48 @@ import (
 	"bytes"
 	"fmt"
 	term "github.com/nsf/termbox-go"
-	terminal "github.com/wayneashleyberry/terminal-dimensions"
+	//terminal "github.com/wayneashleyberry/terminal-dimensions"
+	terminal "golang.org/x/term"
 	"log"
 	"math"
+	"strings"
 	"time"
 )
 
+var colors = []string{
+	"\033[38;5;46m", "\033[38;5;47m", "\033[38;5;48m", "\033[38;5;49m", // green
+	"\033[38;5;149m", "\033[38;5;148m", "\033[38;5;179m", "\033[38;5;176m", // yellow
+	"\033[38;5;169m", "\033[38;5;168m", "\033[38;5;197m", "\033[38;5;196m", // red
+}
+
 type UI struct {
-	terminalWidth  uint
-	terminalHeight uint
+	terminalWidth  int
+	terminalHeight int
 
 	// plotting vars
-	plotWidth  uint
-	plotHeight uint
+	plotWidth  int
+	plotHeight int
 
 	minY, maxY float64
 
 	// first bucket is for requests faster then minY,
 	// last of for ones slower then maxY
-	buckets uint
+	buckets int
 	logBase float64
 	startMs float64
 }
 
 func InitTerminal(minY time.Duration, maxY time.Duration) *UI {
 	ui := UI{}
+	if !terminal.IsTerminal(0) {
+		panic("Not a terminal")
+	}
 
-	ui.terminalWidth, _ = terminal.Width()
-	ui.terminalHeight, _ = terminal.Height()
+	var err error
+	ui.terminalWidth, ui.terminalHeight, err = terminal.GetSize(0)
+	if err != nil {
+		panic(err)
+	}
 
 	ui.plotWidth = ui.terminalWidth
 	ui.plotHeight = ui.terminalHeight - statsLines
@@ -100,12 +114,6 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 		}
 	}()
 
-	colors := []string{
-		"\033[38;5;46m", "\033[38;5;47m", "\033[38;5;48m", "\033[38;5;49m", // green
-		"\033[38;5;149m", "\033[38;5;148m", "\033[38;5;179m", "\033[38;5;176m", // yellow
-		"\033[38;5;169m", "\033[38;5;168m", "\033[38;5;197m", "\033[38;5;196m", // red
-	}
-
 	colorMultiplier := float64(len(colors)) / float64(ui.buckets)
 	barWidth := int(ui.plotWidth) - reservedWidthSpace // reserve some space on right and left
 
@@ -113,6 +121,9 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 	for {
 		select {
 		case <-ticker:
+			var sb strings.Builder
+			sb.Grow(int(ui.terminalWidth*ui.terminalHeight*2 + ui.terminalHeight*(5*5+12*2))) // just a guess
+
 			// scratch arrays
 			tOk := make([]int64, len(stats.timingsOk))
 			tBad := make([]int64, len(stats.timingsBad))
@@ -136,25 +147,25 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 
 			sent := stats.requestsSent.Load()
 			recv := stats.responsesReceived.Load()
-			fmt.Print("\033[H") // clean screen
-			fmt.Printf("sent: %-6d ", sent)
-			fmt.Printf("in-flight: %-2d ", sent-recv)
-			fmt.Printf("\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), desiredRate.Load())
+			_, _ = fmt.Fprint(&sb, "\033[H") // clean screen
+			_, _ = fmt.Fprintf(&sb, "sent: %-6d ", sent)
+			_, _ = fmt.Fprintf(&sb, "in-flight: %-2d ", sent-recv)
+			_, _ = fmt.Fprintf(&sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), desiredRate.Load())
 
-			fmt.Print("responses: ")
+			_, _ = fmt.Fprint(&sb, "responses: ")
 			for status, counter := range stats.responses {
 				if c := counter.Load(); c > 0 {
 					if status >= 200 && status < 300 {
-						fmt.Printf("\033[32m[%d]: %-6d\033[0m ", status, c)
+						_, _ = fmt.Fprintf(&sb, "\033[32m[%d]: %-6d\033[0m ", status, c)
 					} else {
-						fmt.Printf("\033[31m[%d]: %-6d\033[0m ", status, c)
+						_, _ = fmt.Fprintf(&sb, "\033[31m[%d]: %-6d\033[0m ", status, c)
 					}
 				}
 			}
-			fmt.Print("\r\n\r\n")
+			_, _ = fmt.Fprint(&sb, "\r\n\r\n")
 
 			width := float64(barWidth) / float64(max)
-			for bkt := uint(0); bkt < ui.buckets; bkt++ {
+			for bkt := 0; bkt < ui.buckets; bkt++ {
 				var label string
 				if bkt == 0 {
 					if ui.startMs >= 10 {
@@ -183,7 +194,7 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 				widthBad := int(float64(tBad[bkt]) * width)
 				widthLeft := barWidth - widthOk - widthBad
 
-				fmt.Printf("%10s ms: [%s%6d%s/%s%6d%s] %s%s%s%s%s \r\n",
+				_, _ = fmt.Fprintf(&sb, "%10s ms: [%s%6d%s/%s%6d%s] %s%s%s%s%s \r\n",
 					label,
 					"\033[32m",
 					tOk[bkt],
@@ -196,7 +207,8 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 					bytes.Repeat([]byte("*"), widthOk),
 					bytes.Repeat([]byte(" "), widthLeft),
 					"\033[0m")
-			}
+			} // end for
+			_, _ = fmt.Print(sb.String())
 		case <-quit:
 			return
 		}

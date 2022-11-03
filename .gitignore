@@ -15,3 +15,5 @@ slapper
 dist
 
 run.sh
+
+bin/*

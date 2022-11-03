@@ -41,7 +41,7 @@ func resetStats() {
 	}
 }
 
-func (s *Stats) initializeTimingsBucket(buckets uint) {
+func (s *Stats) initializeTimingsBucket(buckets int) {
 	s.timingsOk = make([][]counter, movingWindowsSize*screenRefreshFrequency)
 	for i := 0; i < len(s.timingsOk); i++ {
 		s.timingsOk[i] = make([]counter, buckets)
