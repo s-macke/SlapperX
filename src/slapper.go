@@ -22,6 +22,7 @@ const (
 var (
 	desiredRate counter
 	stats       Stats
+	trgt        *Targeter
 	ui          *UI
 )
 
@@ -33,7 +34,9 @@ func main() {
 		panic("No Requests")
 	}
 
-	trgt := NewTargeter(&requests, config.Timeout)
+	trgt = NewTargeter(&requests, config.Timeout)
+	//trgt.client.String()
+	//os.Exit(0)
 
 	ui = InitTerminal(config.MinY, config.MaxY)
 	stats = Stats{}
