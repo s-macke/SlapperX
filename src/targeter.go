@@ -1,23 +1,44 @@
 package main
 
 import (
-	"io"
+	"github.com/valyala/fasthttp"
 	"math"
-	"net/http"
-	"slapper/src/tracing"
 	"sync"
 	"time"
 )
 
 type Targeter struct {
-	client   *tracing.TracingClient
+	//client   *tracing.TracingClient
+	client   *fasthttp.Client
 	wg       sync.WaitGroup
 	idx      counter
-	requests []http.Request
+	requests []fasthttp.Request
 }
 
-func NewTargeter(requests *[]http.Request, timeout time.Duration) *Targeter {
-	client := tracing.NewTracingClient(timeout)
+func NewTargeter(requests *[]fasthttp.Request, timeout time.Duration) *Targeter {
+	//client := tracing.NewTracingClient(timeout)
+	client := &fasthttp.Client{
+		//Name:                          "",
+		//NoDefaultUserAgentHeader:      false,
+		//Dial:                          nil,
+		//DialDualStack:                 false,
+		//TLSConfig:                     nil,
+		MaxConnsPerHost: math.MaxInt,
+		//MaxIdleConnDuration:           0,
+		//MaxConnDuration:               0,
+		//MaxIdemponentCallAttempts:     0,
+		//ReadBufferSize:                0,
+		//WriteBufferSize:               0,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+		//MaxResponseBodySize:           0,
+		//DisableHeaderNamesNormalizing: false,
+		//DisablePathNormalizing:        false,
+		//MaxConnWaitTimeout:            0,
+		//RetryIf:                       nil,
+		//ConnPoolStrategy:              0,
+		//ConfigureClient:               nil,
+	}
 
 	return &Targeter{
 		client:   client,
@@ -26,12 +47,12 @@ func NewTargeter(requests *[]http.Request, timeout time.Duration) *Targeter {
 	}
 }
 
-func (trgt *Targeter) nextRequest() *http.Request {
+func (trgt *Targeter) nextRequest() *fasthttp.Request {
 	idx := int(trgt.idx.Add(1))
 	return &trgt.requests[idx%len(trgt.requests)]
 }
 
-func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time, quit <-chan struct{}) {
+func (trgt *Targeter) attack(client *fasthttp.Client, ch <-chan time.Time, quit <-chan struct{}) {
 
 	for {
 		select {
@@ -40,11 +61,13 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 			stats.requestsSent.Add(1)
 
 			start := time.Now()
-			response, err := client.Do(request)
+			var response = fasthttp.AcquireResponse()
+			err := client.Do(request, response)
 			if err == nil {
-				_, err = io.ReadAll(response.Body)
-				err = response.Body.Close()
+				_ = response.Body()
 			}
+			statusCode := response.StatusCode()
+			fasthttp.ReleaseResponse(response)
 			now := time.Now()
 
 			elapsed := now.Sub(start)
@@ -66,7 +89,7 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 
 			status := 0
 			if err == nil {
-				status = response.StatusCode
+				status = statusCode
 			}
 
 			stats.responses[status].Add(1)

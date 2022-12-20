@@ -2,10 +2,10 @@ package httpfile
 
 import (
 	"bufio"
+	"github.com/valyala/fasthttp"
 	"io"
 	"io/fs"
 	"log"
-	"net/http"
 	"strings"
 )
 
@@ -18,7 +18,7 @@ const (
 )
 
 type Parser struct {
-	reqs    []http.Request
+	reqs    []fasthttp.Request
 	req     HTTPFile
 	scanner *bufio.Scanner
 }
@@ -266,7 +266,7 @@ func (p *Parser) parse(addKeepAlive bool) {
 	}
 }
 
-func HTTPFileParser(templatePath fs.FS, path string, addKeepAlive bool) []http.Request {
+func HTTPFileParser(templatePath fs.FS, path string, addKeepAlive bool) []fasthttp.Request {
 	file, err := templatePath.Open(path)
 	if err != nil {
 		log.Fatal(err)

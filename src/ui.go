@@ -228,6 +228,12 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 		select {
 		case <-ticker:
 			ui.drawHistogram(currentRate)
+			/*
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				fmt.Println(m.Mallocs, m.Frees, m.NumGC)
+				runtime.GC()
+			*/
 		case <-quit:
 			return
 		}
