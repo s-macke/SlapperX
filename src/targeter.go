@@ -3,48 +3,26 @@ package main
 import (
 	"github.com/valyala/fasthttp"
 	"math"
+	"slapper/src/tracing"
 	"sync"
 	"time"
 )
 
 type Targeter struct {
-	//client   *tracing.TracingClient
-	client   *fasthttp.Client
+	client   tracing.TracingClient
 	wg       sync.WaitGroup
 	idx      counter
 	requests []fasthttp.Request
 }
 
 func NewTargeter(requests *[]fasthttp.Request, timeout time.Duration) *Targeter {
-	//client := tracing.NewTracingClient(timeout)
-	client := &fasthttp.Client{
-		//Name:                          "",
-		//NoDefaultUserAgentHeader:      false,
-		//Dial:                          nil,
-		//DialDualStack:                 false,
-		//TLSConfig:                     nil,
-		MaxConnsPerHost: math.MaxInt,
-		//MaxIdleConnDuration:           0,
-		//MaxConnDuration:               0,
-		//MaxIdemponentCallAttempts:     0,
-		//ReadBufferSize:                0,
-		//WriteBufferSize:               0,
-		ReadTimeout:  timeout,
-		WriteTimeout: timeout,
-		//MaxResponseBodySize:           0,
-		//DisableHeaderNamesNormalizing: false,
-		//DisablePathNormalizing:        false,
-		//MaxConnWaitTimeout:            0,
-		//RetryIf:                       nil,
-		//ConnPoolStrategy:              0,
-		//ConfigureClient:               nil,
-	}
-
+	client := tracing.NewFastHttpTracingClient(timeout)
 	return &Targeter{
-		client:   client,
 		idx:      0,
+		client:   client,
 		requests: *requests,
 	}
+
 }
 
 func (trgt *Targeter) nextRequest() *fasthttp.Request {
@@ -52,7 +30,7 @@ func (trgt *Targeter) nextRequest() *fasthttp.Request {
 	return &trgt.requests[idx%len(trgt.requests)]
 }
 
-func (trgt *Targeter) attack(client *fasthttp.Client, ch <-chan time.Time, quit <-chan struct{}) {
+func (trgt *Targeter) attack(client tracing.TracingClient, ch <-chan time.Time, quit <-chan struct{}) {
 
 	for {
 		select {

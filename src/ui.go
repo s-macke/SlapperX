@@ -7,6 +7,7 @@ import (
 	terminal "golang.org/x/term"
 	"log"
 	"math"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -227,13 +228,12 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 	for {
 		select {
 		case <-ticker:
-			ui.drawHistogram(currentRate)
-			/*
-				var m runtime.MemStats
-				runtime.ReadMemStats(&m)
-				fmt.Println(m.Mallocs, m.Frees, m.NumGC)
-				runtime.GC()
-			*/
+			//ui.drawHistogram(currentRate)
+
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			fmt.Println(m.Mallocs, m.Frees, m.HeapInuse)
+
 		case <-quit:
 			return
 		}
