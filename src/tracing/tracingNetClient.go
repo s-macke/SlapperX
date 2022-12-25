@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"slapper/src/httpfile"
 	"time"
 )
 
@@ -97,9 +98,22 @@ func (t *TracingNetClient) DialContext(ctx context.Context, network, address str
 	return c, err
 }
 
-func (t *TracingNetClient) Do(req *http.Request) (resp *http.Response, err error) {
-	resp, err = t.client.Do(req)
-	return
+func (t *TracingNetClient) Do(req *httpfile.Request, resp *Response) error {
+	netresponse, err := t.client.Do(req.NetRequest)
+	if err != nil {
+		return err
+	}
+	resp.Status = netresponse.StatusCode
+
+	_, err = io.ReadAll(netresponse.Body)
+	if err != nil {
+		return err
+	}
+	err = netresponse.Body.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func call(tracingClient *TracingNetClient) {

@@ -1,16 +1,14 @@
 package tracing
 
 import (
-	"github.com/valyala/fasthttp"
-	"net/http"
+	"slapper/src/httpfile"
 )
 
-type Request struct {
-	req1 *fasthttp.Request
-	req2 *http.Request
+type Response struct {
+	Status int
 }
 
 type TracingClient interface {
-	Do(req *fasthttp.Request, resp *fasthttp.Response) error
+	Do(req *httpfile.Request, resp *Response) error
 	String()
 }

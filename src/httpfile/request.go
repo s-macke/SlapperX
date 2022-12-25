@@ -3,6 +3,8 @@ package httpfile
 import (
 	"encoding/base64"
 	"github.com/valyala/fasthttp"
+	"log"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -36,16 +38,15 @@ func AuthToBase64(header HTTPHeader) HTTPHeader {
 	return header
 }
 
-func PrepareRequest(r HTTPFile, addKeepAlive bool) *fasthttp.Request {
+func PrepareFastRequest(r HTTPFile, addKeepAlive bool) *fasthttp.Request {
 	req := fasthttp.AcquireRequest()
 	req.SetRequestURI(r.URL)
+	req.Header.SetMethod(r.Method)
 
 	for _, p := range r.Parameter {
 		req.URI().QueryArgs().Add(p.Key, p.Value)
 	}
 
-	// TODO parameters
-	req.Header.SetMethod(r.Method)
 	for _, header := range r.Header {
 		header = AuthToBase64(header)
 		//if header.Key == "Host" {
@@ -60,8 +61,7 @@ func PrepareRequest(r HTTPFile, addKeepAlive bool) *fasthttp.Request {
 	return req
 }
 
-/*
-func PrepareRequest(r HTTPFile, addKeepAlive bool) *http.Request {
+func PrepareNetRequest(r HTTPFile, addKeepAlive bool) *http.Request {
 	req, err := http.NewRequest(r.Method, r.URL, strings.NewReader(r.Body))
 	if err != nil {
 		log.Fatal(err)
@@ -84,7 +84,18 @@ func PrepareRequest(r HTTPFile, addKeepAlive bool) *http.Request {
 	}
 	return req
 }
-*/
+
+type Request struct {
+	FastRequest *fasthttp.Request
+	NetRequest  *http.Request
+}
+
+func PrepareRequest(r HTTPFile, addKeepAlive bool) Request {
+	return Request{
+		FastRequest: PrepareFastRequest(r, addKeepAlive),
+		NetRequest:  PrepareNetRequest(r, addKeepAlive),
+	}
+}
 
 /*
 func DoRequest(r HTTPRequest, showdetails bool) string {

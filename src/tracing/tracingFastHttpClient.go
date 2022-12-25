@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/valyala/fasthttp"
 	"net"
-	"os"
+	"slapper/src/httpfile"
 	"time"
 )
 
@@ -22,7 +22,7 @@ func NewFastHttpTracingClient(timeout time.Duration) *TracingFastHttpClient {
 	dial := &fasthttp.TCPDialer{Concurrency: 1000}
 	tracingClient := &TracingFastHttpClient{
 		dialer: dial,
-		hc:     nil,
+		hc:     make(map[string]*fasthttp.HostClient),
 	}
 	tracingClient.client = &fasthttp.Client{
 		Name:                     "", // default ist fasthttp
@@ -51,8 +51,6 @@ func NewFastHttpTracingClient(timeout time.Duration) *TracingFastHttpClient {
 			return nil
 		},
 	}
-	tracingClient.String()
-	os.Exit(1)
 	return tracingClient
 }
 
@@ -71,8 +69,15 @@ func (t *TracingFastHttpClient) Dial(addr string) (net.Conn, error) {
 	return c, err
 }
 
-func (t *TracingFastHttpClient) Do(req *fasthttp.Request, resp *fasthttp.Response) error {
-	return t.client.Do(req, resp)
+func (t *TracingFastHttpClient) Do(req *httpfile.Request, resp *Response) error {
+	var response = fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(response)
+	err := t.client.Do(req.FastRequest, response)
+	if err == nil {
+		_ = response.Body()
+	}
+	resp.Status = response.StatusCode()
+	return nil
 }
 
 func (t *TracingFastHttpClient) String() {

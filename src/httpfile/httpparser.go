@@ -2,7 +2,6 @@ package httpfile
 
 import (
 	"bufio"
-	"github.com/valyala/fasthttp"
 	"io"
 	"io/fs"
 	"log"
@@ -18,7 +17,7 @@ const (
 )
 
 type Parser struct {
-	reqs    []fasthttp.Request
+	reqs    []Request
 	req     HTTPFile
 	scanner *bufio.Scanner
 }
@@ -246,7 +245,7 @@ func (p *Parser) parse(addKeepAlive bool) {
 		newpart := p.parsePart(part, line)
 		if part != PREMETHOD && newpart == PREMETHOD {
 			fillParameters(&p.req)
-			p.reqs = append(p.reqs, *PrepareRequest(p.req, addKeepAlive))
+			p.reqs = append(p.reqs, PrepareRequest(p.req, addKeepAlive))
 			p.req = NewHTTPFile()
 		}
 		if newpart != part {
@@ -257,7 +256,7 @@ func (p *Parser) parse(addKeepAlive bool) {
 	}
 	if len(p.req.Method) != 0 {
 		fillParameters(&p.req)
-		p.reqs = append(p.reqs, *PrepareRequest(p.req, addKeepAlive))
+		p.reqs = append(p.reqs, PrepareRequest(p.req, addKeepAlive))
 		p.req = NewHTTPFile()
 	}
 
@@ -266,7 +265,7 @@ func (p *Parser) parse(addKeepAlive bool) {
 	}
 }
 
-func HTTPFileParser(templatePath fs.FS, path string, addKeepAlive bool) []fasthttp.Request {
+func HTTPFileParser(templatePath fs.FS, path string, addKeepAlive bool) []Request {
 	file, err := templatePath.Open(path)
 	if err != nil {
 		log.Fatal(err)

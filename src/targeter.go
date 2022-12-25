@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/valyala/fasthttp"
 	"math"
+	"slapper/src/httpfile"
 	"slapper/src/tracing"
 	"sync"
 	"time"
@@ -12,20 +12,21 @@ type Targeter struct {
 	client   tracing.TracingClient
 	wg       sync.WaitGroup
 	idx      counter
-	requests []fasthttp.Request
+	requests []httpfile.Request
 }
 
-func NewTargeter(requests *[]fasthttp.Request, timeout time.Duration) *Targeter {
-	client := tracing.NewFastHttpTracingClient(timeout)
+func NewTargeter(requests *[]httpfile.Request, timeout time.Duration) *Targeter {
+	//client := tracing.NewFastHttpTracingClient(timeout)
+	//client := tracing.NewTracingNetClient(timeout)
+	client := tracing.NewTracingQuicClient(timeout)
 	return &Targeter{
 		idx:      0,
 		client:   client,
 		requests: *requests,
 	}
-
 }
 
-func (trgt *Targeter) nextRequest() *fasthttp.Request {
+func (trgt *Targeter) nextRequest() *httpfile.Request {
 	idx := int(trgt.idx.Add(1))
 	return &trgt.requests[idx%len(trgt.requests)]
 }
@@ -37,15 +38,9 @@ func (trgt *Targeter) attack(client tracing.TracingClient, ch <-chan time.Time, 
 		case <-ch:
 			request := trgt.nextRequest()
 			stats.requestsSent.Add(1)
-
+			response := tracing.Response{}
 			start := time.Now()
-			var response = fasthttp.AcquireResponse()
-			err := client.Do(request, response)
-			if err == nil {
-				_ = response.Body()
-			}
-			statusCode := response.StatusCode()
-			fasthttp.ReleaseResponse(response)
+			err := client.Do(request, &response)
 			now := time.Now()
 
 			elapsed := now.Sub(start)
@@ -67,7 +62,7 @@ func (trgt *Targeter) attack(client tracing.TracingClient, ch <-chan time.Time, 
 
 			status := 0
 			if err == nil {
-				status = statusCode
+				status = response.Status
 			}
 
 			stats.responses[status].Add(1)
