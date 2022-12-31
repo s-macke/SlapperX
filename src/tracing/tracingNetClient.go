@@ -115,34 +115,3 @@ func (t *TracingNetClient) Do(req *httpfile.Request, resp *Response) error {
 	}
 	return nil
 }
-
-func call(tracingClient *TracingNetClient) {
-	req, err := http.NewRequest("GET", "http://localhost:8080/hello/", nil)
-	req.Header.Set("Connection", "keep-alive")
-
-	if err != nil {
-		fmt.Print(err.Error())
-	}
-	start := time.Now().UnixNano()
-	resp, err := tracingClient.client.Do(req)
-	if err != nil {
-		fmt.Print(err.Error())
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Print(err.Error())
-		}
-	}(resp.Body)
-	_, err = io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Print(err.Error())
-	}
-	end := time.Now().UnixNano()
-	fmt.Println(start/1e6, end/1e6, (end-start)/1e6, resp.Status,
-		tracingClient.currentConnections,
-		tracingClient.openedConnections,
-		tracingClient.closedConnections,
-	)
-	//fmt.Println(client.Transport)
-}

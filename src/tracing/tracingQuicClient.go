@@ -87,20 +87,19 @@ func (t *TracingQuicClient) String() {
 func (t *TracingQuicClient) DialAddrEarlyContext(ctx context.Context, addr string, tlsConf *tls.Config, config *quic.Config) (quic.EarlyConnection, error) {
 	fmt.Println("DialAddrEarlyContext")
 	conn, err := quic.DialAddrEarlyContext(ctx, addr, tlsConf, config)
-	/*conn.ConnectionState()
-
-	c := TracingConnection{Conn: conn}
-	c.OnEventCallback = func(clientClosed bool, serverClosed bool, err error) {
-		t.closedConnections++
-		t.currentConnections--
-	}
-
+	c := TracingQuicConnection{conn, 0, 0, 0, 0, 0, 0}
+	/*
+		c.OnEventCallback = func(clientClosed bool, serverClosed bool, err error) {
+			t.closedConnections++
+			t.currentConnections--
+		}
+	*/
 	if err == nil {
 		t.openedConnections++
 		t.currentConnections++
 	}
-	*/
-	return conn, err
+
+	return c, err
 }
 
 func (t *TracingQuicClient) Do(req *httpfile.Request, resp *Response) error {
