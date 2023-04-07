@@ -1,8 +1,8 @@
 # Make sure to check the documentation at https://goreleaser.com
 builds:
   - main: ./src
-    binary: slapper
-    id: slapper
+    binary: slapperx
+    id: slapperx
     env:
       - CGO_ENABLED=0
     goos:

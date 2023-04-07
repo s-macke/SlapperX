@@ -13,7 +13,7 @@
 *.out
 
 requests/
-slapper
+slapperx
 dist
 
 run.sh

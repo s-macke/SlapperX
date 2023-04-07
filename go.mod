@@ -1,4 +1,4 @@
-module slapper
+module slapperx
 
 go 1.19
 
