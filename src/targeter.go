@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/s-macke/slapperx/src/tracing"
 	"io"
 	"math"
 	"net/http"
-	"slapper/src/tracing"
 	"sync"
 	"time"
 )

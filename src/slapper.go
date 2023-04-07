@@ -1,22 +1,22 @@
 package main
 
 import (
+	"github.com/s-macke/slapperx/src/httpfile"
 	"os"
-	"slapper/src/httpfile"
 	"time"
 )
 
 const (
 	statsLines             = 3
 	movingWindowsSize      = 10 // seconds
-	screenRefreshFrequency = 3  // per second
+	screenRefreshFrequency = 5  // per second
 	screenRefreshInterval  = time.Second / screenRefreshFrequency
 
 	reservedWidthSpace  = 40
 	reservedHeightSpace = 3
 
-	rateIncreaseStep = 100
-	rateDecreaseStep = -100
+	rateIncreaseStep = 50
+	rateDecreaseStep = -50
 )
 
 var (

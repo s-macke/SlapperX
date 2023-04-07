@@ -1,4 +1,4 @@
-module slapperx
+module github.com/s-macke/slapperx
 
 go 1.19
 
