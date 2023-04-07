@@ -1,4 +1,4 @@
-package main
+package slapperx
 
 import (
 	"bytes"
@@ -100,6 +100,10 @@ keyPressListenerLoop:
 					break keyPressListenerLoop
 				case 'r':
 					resetStats()
+				case 'k': // up
+					rateChanger <- rateIncreaseStep
+				case 'j':
+					rateChanger <- rateDecreaseStep
 				}
 			}
 		case term.EventError:

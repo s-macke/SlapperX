@@ -1,6 +1,6 @@
 # Make sure to check the documentation at https://goreleaser.com
 builds:
-  - main: ./src
+  - main: .
     binary: slapperx
     id: slapperx
     env:

@@ -26,8 +26,7 @@ After installing Go, clone this repository and build the binary:
 ```bash
 git clone https://github.com/s-macke/SlapperX.git
 cd SlapperX
-cd src
-go build -o slapperx
+go build
 ```
 
 ## Usage

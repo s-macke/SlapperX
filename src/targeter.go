@@ -1,4 +1,4 @@
-package main
+package slapperx
 
 import (
 	"github.com/s-macke/slapperx/src/tracing"

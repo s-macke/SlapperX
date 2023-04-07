@@ -1,4 +1,4 @@
-package main
+package slapperx
 
 import (
 	"github.com/s-macke/slapperx/src/httpfile"
@@ -26,7 +26,7 @@ var (
 	ui          *UI
 )
 
-func main() {
+func Main() {
 	config := ParseFlags()
 	fs := os.DirFS(".")
 	requests := httpfile.HTTPFileParser(fs, config.Targets, true)
