@@ -22,7 +22,7 @@ Slapper is a simple load testing tool written in Go, which can send HTTP request
 Just [download](https://github.com/s-macke/SlapperX/releases/tag/v0.2.3) a release or install SlapperX via
 
 ```bash
-go install github.com/s-macke/slapperx
+go install github.com/s-macke/slapperx@latest
 ```
 
 ## Installation (Manual)
