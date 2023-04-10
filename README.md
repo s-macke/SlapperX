@@ -66,22 +66,47 @@ Here is an example of how to use Slapper:
 
 ## Targets syntax
 
-The targets file uses the same format as the Jetbrains `.http` files.
-The full spec can be found [here](https://www.jetbrains.com/help/idea/exploring-http-syntax.html#short-form-for-get-requests)
+The targets file follows the same format as the Jetbrains `.http` files.
+You can find the full specification in the
+[JetBrains documentation](https://www.jetbrains.com/help/idea/exploring-http-syntax.html#short-form-for-get-requests).
+	
+Here is an example:
 
-	HTTP_METHOD url
-	HEADERKEY1: HEADERVALUE1
-	HEADERKEY2: HEADERVALUE2
-	
-	body
-	
-	###
-	
-	HTTP_METHOD url
-	HEADERKEY1: HEADERVALUE1
-	....
-	
-The http requests are separated by `###`.
+```
+GET https://api.example.com/users
+Authorization: Bearer your_token_here
+Content-Type: application/json
+
+###
+
+POST https://api.example.com/users
+Authorization: Bearer your_token_here
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com"
+}
+
+###
+
+PUT https://api.example.com/users/123
+Authorization: Bearer your_token_here
+Content-Type: application/json
+
+{
+  "email": "updated.email@example.com"
+}
+```
+
+In this example, we have three HTTP requests:
+
+1. A `GET` request to retrieve a list of users.
+2. A `POST` request to create a new user.
+3. A `PUT` request to update an existing user's email.
+
+Each request includes headers, such as `Authorization` and `Content-Type`, and uses the `###` separator to distinguish between requests.
+
 
 ## Contributing
 
