@@ -60,6 +60,8 @@ Here is an example of how to use Slapper:
 
 - `q`: Quit the program.
 - `r`: Reset the statistics.
+- `k`: Increase request rate by 10
+- `j`: Decrease request rate by 10
 - `Ctrl+C`: Quit the program.
 
 ## Targets syntax
