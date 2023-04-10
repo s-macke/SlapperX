@@ -15,19 +15,19 @@ const (
 	reservedWidthSpace  = 40
 	reservedHeightSpace = 3
 
-	rateIncreaseStep = 50
-	rateDecreaseStep = -50
+	rateIncreaseStep = 10
+	rateDecreaseStep = -10
 )
 
 var (
-	desiredRate counter
-	stats       Stats
-	trgt        *Targeter
-	ui          *UI
+	stats Stats
+	trgt  *Targeter
+	ui    *UI
 )
 
 func Main() {
 	config := ParseFlags()
+
 	fs := os.DirFS(".")
 	requests := httpfile.HTTPFileParser(fs, config.Targets, true)
 	if len(requests) == 0 {
@@ -35,18 +35,21 @@ func Main() {
 	}
 
 	trgt = NewTargeter(&requests, config.Timeout)
-	//trgt.client.String()
-	//os.Exit(0)
-
 	ui = InitTerminal(config.MinY, config.MaxY)
+
 	stats = Stats{}
 	stats.initializeTimingsBucket(ui.buckets)
 
 	quit := make(chan struct{}, 1)
-	ticker, rateChanger := ticker(config.Rate, config.RampUp, quit)
+
+	ticker := NewTicker(config.Rate)
+
+	rampUpController := NewRamUpController(config.RampUp, config.Rate)
+	go rampUpController.startRampUpTimeProcess(ticker.GetRateChanger())
 
 	// start attackers
-	trgt.Start(config.Workers, ticker, quit)
+	var onTickChan = ticker.Start(quit)
+	trgt.Start(config.Workers, onTickChan, quit)
 
 	// start reporter
 	trgt.wg.Add(1)
@@ -56,9 +59,9 @@ func Main() {
 	}()
 
 	// blocking
-	ui.keyPressListener(rateChanger)
+	ui.keyPressListener(rampUpController.GetRateChanger())
 
 	// bye
 	close(quit)
-	trgt.wg.Wait()
+	trgt.Wait()
 }

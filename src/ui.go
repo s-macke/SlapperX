@@ -112,7 +112,7 @@ keyPressListenerLoop:
 	}
 }
 
-func (ui *UI) drawHistogram(currentRate counter) {
+func (ui *UI) drawHistogram(currentRate counter, currentSetRate counter) {
 	var sb strings.Builder
 	sb.Grow(int(ui.terminalWidth*ui.terminalHeight*2 + ui.terminalHeight*(5*5+12*2))) // just a guess
 
@@ -145,7 +145,7 @@ func (ui *UI) drawHistogram(currentRate counter) {
 	_, _ = fmt.Fprint(&sb, "\033[H") // clean screen
 	_, _ = fmt.Fprintf(&sb, "sent: %-6d ", sent)
 	_, _ = fmt.Fprintf(&sb, "in-flight: %-2d ", sent-recv)
-	_, _ = fmt.Fprintf(&sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), desiredRate.Load())
+	_, _ = fmt.Fprintf(&sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), currentSetRate.Load())
 
 	_, _ = fmt.Fprint(&sb, "responses: ")
 	for status, counter := range stats.responses {
@@ -231,7 +231,7 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 	for {
 		select {
 		case <-ticker:
-			ui.drawHistogram(currentRate)
+			ui.drawHistogram(currentRate, stats.currentSetRate)
 		case <-quit:
 			return
 		}

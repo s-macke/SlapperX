@@ -19,6 +19,14 @@ Slapper is a simple load testing tool written in Go, which can send HTTP request
 
 ## Installation
 
+Just [download](https://github.com/s-macke/SlapperX/releases/tag/v0.2.3) a release or install SlapperX via
+
+```bash
+go install github.com/s-macke/slapperx
+```
+
+## Installation (Manual)
+
 To use Slapper, you need to have Go installed on your machine. You can download Go from [the official website](https://golang.org/dl/).
 
 After installing Go, clone this repository and build the binary:
@@ -37,7 +45,6 @@ Here is an example of how to use Slapper:
 ./slapper -targets targets.txt -workers 8 -timeout 30s -rate 50 -minY 0ms -maxY 100ms -rampup 10s
 ```
 
-
 ### Flags
 
 - `-targets`: Targets file containing the list of URLs to be tested.
@@ -46,7 +53,7 @@ Here is an example of how to use Slapper:
 - `-rate`: Desired request rate per second (default 50).
 - `-minY`: Minimum Y-axis value for the histogram (default 0 milliseconds).
 - `-maxY`: Maximum Y-axis value for the histogram (default 100 milliseconds).
-- `-rampup`: Duration to ramp up to the desired request rate (default 10 seconds).
+- `-rampup`: Duration to ramp up to the desired request rate (default 0 seconds).
 - 
 
 ### Keybindings

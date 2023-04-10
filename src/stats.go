@@ -5,6 +5,7 @@ import (
 )
 
 type Stats struct {
+	currentSetRate    counter
 	requestsSent      counter
 	responsesReceived counter
 	responses         [1024]counter

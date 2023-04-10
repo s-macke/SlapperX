@@ -91,5 +91,8 @@ func (trgt *Targeter) Start(workers uint, ticker <-chan time.Time, quit <-chan s
 			trgt.attack(trgt.client, ticker, quit)
 		}()
 	}
+}
 
+func (trgt *Targeter) Wait() {
+	trgt.wg.Wait()
 }
