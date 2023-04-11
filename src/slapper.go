@@ -7,13 +7,9 @@ import (
 )
 
 const (
-	statsLines             = 3
 	movingWindowsSize      = 10 // seconds
 	screenRefreshFrequency = 5  // per second
 	screenRefreshInterval  = time.Second / screenRefreshFrequency
-
-	reservedWidthSpace  = 40
-	reservedHeightSpace = 3
 
 	rateIncreaseStep = 10
 	rateDecreaseStep = -10
@@ -21,11 +17,12 @@ const (
 
 var (
 	stats Stats
-	trgt  *Targeter
 	ui    *UI
 )
 
 func Main() {
+	var trgt *Targeter
+
 	config := ParseFlags()
 
 	fs := os.DirFS(".")
