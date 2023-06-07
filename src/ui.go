@@ -25,6 +25,8 @@ var colors = []string{
 	"\033[38;5;169m", "\033[38;5;168m", "\033[38;5;197m", "\033[38;5;196m", // red
 }
 
+// var partChar = []string{" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"}
+
 type UI struct {
 	terminalWidth  int
 	terminalHeight int

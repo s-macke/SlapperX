@@ -1,10 +1,13 @@
 package slapperx
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/s-macke/slapperx/src/tracing"
 	"io"
 	"math"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -14,15 +17,43 @@ type Targeter struct {
 	wg       sync.WaitGroup
 	idx      counter
 	requests []http.Request
+
+	file            *os.File
+	fileWriter      *bufio.Writer
+	attackStartTime time.Time
 }
 
-func NewTargeter(requests *[]http.Request, timeout time.Duration) *Targeter {
+func NewTargeter(requests *[]http.Request, timeout time.Duration, logFile string) *Targeter {
 	client := tracing.NewTracingClient(timeout)
 
-	return &Targeter{
+	trgt := &Targeter{
 		client:   client,
 		idx:      0,
 		requests: *requests,
+		file:     nil,
+	}
+
+	if logFile != "" {
+		var err error
+		trgt.file, err = os.Create(logFile)
+		if err != nil {
+			panic(err)
+		}
+		trgt.fileWriter = bufio.NewWriterSize(trgt.file, 8192)
+	}
+	return trgt
+}
+
+func (trgt *Targeter) close() {
+	if trgt.file != nil {
+		err := trgt.fileWriter.Flush()
+		if err != nil {
+			panic(err)
+		}
+		err = trgt.file.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -76,6 +107,19 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 			} else {
 				tBad[elapsedBucket].Add(1)
 			}
+
+			if trgt.file != nil {
+				_, err = trgt.fileWriter.WriteString(
+					fmt.Sprintf("%s,%d,%d,%d\n",
+						start.Format("2006-01-02T15:04:05.999999999"),
+						start.Sub(trgt.attackStartTime).Milliseconds(),
+						elapsed.Milliseconds(),
+						status))
+				if err != nil {
+					panic(err)
+				}
+			}
+
 		case <-quit:
 			return
 		}
@@ -83,6 +127,7 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 }
 
 func (trgt *Targeter) Start(workers uint, ticker <-chan time.Time, quit <-chan struct{}) {
+	trgt.attackStartTime = time.Now()
 	// start attackers
 	for i := uint(0); i < workers; i++ {
 		trgt.wg.Add(1)

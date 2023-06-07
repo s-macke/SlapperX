@@ -228,9 +228,12 @@ func fillParameters(request *HTTPFile) {
 	params := strings.Split(urlSplit[1], "&")
 	for _, kv := range params {
 		keyvalue := strings.Split(kv, "=")
-		if len(keyvalue) != 2 {
+		if len(keyvalue) < 2 {
 			//panic("URL Parameters do not contain key value pairs")
 			keyvalue = []string{"", kv}
+		} else if len(keyvalue) > 2 {
+			v := strings.Join(keyvalue[1:], "=")
+			keyvalue = []string{keyvalue[0], v}
 		}
 		request.Parameter = append(request.Parameter, HTTPParameter{Key: keyvalue[0], Value: keyvalue[1]})
 	}
