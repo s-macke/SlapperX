@@ -10,12 +10,15 @@ type Stats struct {
 	responsesReceived counter
 	responses         [1024]counter
 
+	// ring buffer
 	timingsOk  [][]counter
 	timingsBad [][]counter
 }
 
 func (s *Stats) getTimingsSlot(now time.Time) ([]counter, []counter) {
-	n := int(now.UnixNano() / 100000000)
+	//n := int(now.UnixNano() / 100000000)
+	n := int(now.UnixNano() / screenRefreshInterval.Nanoseconds())
+
 	slot := n % len(s.timingsOk)
 	return s.timingsOk[slot], s.timingsBad[slot]
 }
