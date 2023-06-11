@@ -1,10 +1,7 @@
 package tracing
 
 import (
-	"errors"
-	"io"
 	"net"
-	"syscall"
 )
 
 type TracingConnection struct {
@@ -19,15 +16,17 @@ func (t *TracingConnection) CallEvent(err error) {
 	if err == nil {
 		return
 	}
-	switch {
-	case
-		errors.Is(err, net.ErrClosed),
-		errors.Is(err, io.EOF),
-		errors.Is(err, syscall.EPIPE):
-		t.OnEventCallback(false, true, err)
-	default:
-		t.OnEventCallback(false, false, err)
-	}
+	/*
+		switch {
+		case
+			errors.Is(err, net.ErrClosed),
+			errors.Is(err, io.EOF),
+			errors.Is(err, syscall.EPIPE):
+			t.OnEventCallback(false, true, err)
+		default:
+			t.OnEventCallback(false, false, err)
+		}
+	*/
 }
 
 func (t TracingConnection) Read(b []byte) (n int, err error) {

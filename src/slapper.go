@@ -19,9 +19,9 @@ var (
 	stats Stats
 	ui    *UI
 )
+var trgt *Targeter
 
 func Main() {
-	var trgt *Targeter
 
 	config := ParseFlags()
 

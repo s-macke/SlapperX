@@ -8,7 +8,11 @@ type Stats struct {
 	currentSetRate    counter
 	requestsSent      counter
 	responsesReceived counter
-	responses         [1024]counter
+
+	responses                 [1024]counter
+	responsesErrorEof         counter
+	responsesErrorTimeout     counter
+	responsesErrorConnRefused counter
 
 	// ring buffer
 	timingsOk  [][]counter

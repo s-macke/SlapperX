@@ -89,6 +89,12 @@ func (p *Parser) parsePre(line string) int {
 		return PREMETHOD
 	}
 
+	if strings.HasPrefix(line, "http://") {
+		return METHOD
+	}
+	if strings.HasPrefix(line, "https://") {
+		return METHOD
+	}
 	if strings.HasPrefix(line, "GET") {
 		return METHOD
 	}
@@ -106,13 +112,16 @@ func (p *Parser) parsePre(line string) int {
 func (p *Parser) parseMethod(line string) int {
 	//fmt.Println("Method:" + line)
 
-	if !strings.HasPrefix(line, "GET") && !strings.HasPrefix(line, "POST") && !strings.HasPrefix(line, "OPTIONS") && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
-		return HEADER
-	}
 	if strings.HasPrefix(line, "###") {
 		return PREMETHOD
 	}
+	if !strings.HasPrefix(line, "http://") && !strings.HasPrefix(line, "https://") && !strings.HasPrefix(line, "GET") && !strings.HasPrefix(line, "POST") && !strings.HasPrefix(line, "OPTIONS") && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+		return HEADER
+	}
 
+	if strings.HasPrefix(line, "http") {
+		p.req.Method = "GET"
+	}
 	if strings.HasPrefix(line, "GET ") {
 		p.req.Method = "GET"
 		line = trimLeftChars(line, 4)

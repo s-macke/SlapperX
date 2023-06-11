@@ -2,6 +2,7 @@ package slapperx
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/s-macke/slapperx/src/tracing"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -74,7 +76,7 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 			response, err := client.Do(request)
 			if err == nil {
 				_, err = io.ReadAll(response.Body)
-				err = response.Body.Close()
+				_ = response.Body.Close()
 			}
 			now := time.Now()
 
@@ -98,9 +100,24 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 			status := 0
 			if err == nil {
 				status = response.StatusCode
+				stats.responses[status].Add(1)
+			} else {
+				switch {
+				case
+					errors.Is(err, io.EOF):
+					stats.responsesErrorEof.Add(1)
+				case
+					errors.Is(err, syscall.ECONNREFUSED):
+					stats.responsesErrorConnRefused.Add(1)
+				case
+					os.IsTimeout(err):
+					stats.responsesErrorTimeout.Add(1)
+				default:
+					stats.responses[0].Add(1)
+				}
+
 			}
 
-			stats.responses[status].Add(1)
 			tOk, tBad := stats.getTimingsSlot(now)
 			if status >= 200 && status < 300 {
 				tOk[elapsedBucket].Add(1)

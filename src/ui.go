@@ -89,10 +89,13 @@ func (ui *UI) setWindowSize() {
 		panic(err)
 	}
 
+	ui.terminalWidth = 110
+	ui.terminalHeight = 15
+
 	ui.plotWidth = ui.terminalWidth
 	ui.plotHeight = ui.terminalHeight - statsLines
 
-	if ui.plotWidth <= reservedWidthSpace {
+	if ui.plotWidth < reservedWidthSpace {
 		log.Fatal("not enough screen width, min 40 characters required")
 	}
 
@@ -122,6 +125,7 @@ func (ui *UI) listParameters() {
 func (ui *UI) keyPressListener(rateChanger chan<- int64) {
 	// start keyPress listener
 	err := term.Init()
+	term.HideCursor()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -189,10 +193,21 @@ func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, cur
 
 	_, _ = fmt.Fprintf(sb, "time: %4ds ", int(time.Since(ui.start).Seconds()))
 	_, _ = fmt.Fprintf(sb, "sent: %-5d ", sent)
+	_, _ = fmt.Fprintf(sb, "connections: %-5d ", trgt.client.CurrentConnections)
 	_, _ = fmt.Fprintf(sb, "in-flight: %-4d ", sent-recv)
 	_, _ = fmt.Fprintf(sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), currentSetRate.Load())
 
 	_, _ = fmt.Fprint(sb, "responses: ")
+
+	if stats.responsesErrorConnRefused > 0 {
+		_, _ = fmt.Fprintf(sb, "\033[31m[Conn refused]: %-6d\033[0m ", stats.responsesErrorConnRefused)
+	}
+	if stats.responsesErrorEof > 0 {
+		_, _ = fmt.Fprintf(sb, "\033[31m[EOF]: %-6d\033[0m ", stats.responsesErrorEof)
+	}
+	if stats.responsesErrorTimeout > 0 {
+		_, _ = fmt.Fprintf(sb, "\033[31m[Timeout]: %-6d\033[0m ", stats.responsesErrorTimeout)
+	}
 	for status, counter := range stats.responses {
 		if c := counter.Load(); c > 0 {
 			if status >= 200 && status < 300 {
