@@ -2,13 +2,11 @@ package slapperx
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	term "github.com/nsf/termbox-go"
 	terminal "golang.org/x/term"
 	"log"
 	"math"
-	"os"
 	"strings"
 	"time"
 )
@@ -30,9 +28,7 @@ var colors = []string{
 // var partChar = []string{" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"}
 
 type UI struct {
-	start     time.Time
-	firstCall bool
-	file      *os.File
+	start time.Time
 
 	terminalWidth  int
 	terminalHeight int
@@ -53,33 +49,20 @@ type UI struct {
 // InitTerminal initializes the terminal and sets the UI dimensions
 func InitTerminal(minY time.Duration, maxY time.Duration) *UI {
 	ui := UI{
-		minY:      float64(minY / time.Millisecond),
-		maxY:      float64(maxY / time.Millisecond),
-		start:     time.Now(),
-		firstCall: true,
+		minY:  float64(minY / time.Millisecond),
+		maxY:  float64(maxY / time.Millisecond),
+		start: time.Now(),
 	}
 	if !terminal.IsTerminal(0) {
 		panic("Not a terminal")
 	}
 
 	ui.setWindowSize()
-
-	var err error
-	ui.file, err = os.Create("ui.asciicast")
-	if err != nil {
-		panic(err)
-	}
-	_, err = ui.file.WriteString(fmt.Sprintf("{\"version\":2,\"width\":%d,\"height\":%d,\"timestamp\":0,\"title\":\"Demo\",\"env\":{\"TERM\":\"/bin/bash\",\"SHELL\":\"xterm-256color\"}}\n", ui.terminalWidth, ui.terminalHeight))
-	if err != nil {
-		panic(err)
-	}
-
 	return &ui
 }
 
 func (ui *UI) close() {
 	//term.Close()
-	_ = ui.file.Close()
 }
 
 func (ui *UI) setWindowSize() {
@@ -88,9 +71,6 @@ func (ui *UI) setWindowSize() {
 	if err != nil {
 		panic(err)
 	}
-
-	ui.terminalWidth = 110
-	ui.terminalHeight = 15
 
 	ui.plotWidth = ui.terminalWidth
 	ui.plotHeight = ui.terminalHeight - statsLines
@@ -193,7 +173,7 @@ func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, cur
 
 	_, _ = fmt.Fprintf(sb, "time: %4ds ", int(time.Since(ui.start).Seconds()))
 	_, _ = fmt.Fprintf(sb, "sent: %-5d ", sent)
-	_, _ = fmt.Fprintf(sb, "connections: %-5d ", trgt.client.CurrentConnections)
+	//_, _ = fmt.Fprintf(sb, "connections: %-5d ", trgt.client.CurrentConnections)
 	_, _ = fmt.Fprintf(sb, "in-flight: %-4d ", sent-recv)
 	_, _ = fmt.Fprintf(sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), currentSetRate.Load())
 
@@ -283,16 +263,7 @@ func (ui *UI) drawHistogram(currentRate counter, currentSetRate counter) {
 			"\033[0m")
 	} // end for
 
-	now := time.Now()
-	if ui.firstCall {
-		ui.start = now
-		ui.firstCall = false
-	}
 	_, _ = fmt.Print(sb.String())
-	deltaTime := now.Sub(ui.start).Seconds()
-
-	bytes, _ := json.Marshal(sb.String())
-	_, _ = ui.file.WriteString(fmt.Sprintf("[%f, \"o\", %s]\n", deltaTime, string(bytes)))
 }
 
 // clearScreen clears the terminal screen

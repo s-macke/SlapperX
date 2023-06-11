@@ -8,7 +8,7 @@ import (
 
 const (
 	movingWindowsSize      = 10 // seconds
-	screenRefreshFrequency = 3  // per second
+	screenRefreshFrequency = 5  // per second
 	screenRefreshInterval  = time.Second / screenRefreshFrequency
 
 	rateIncreaseStep = 10
