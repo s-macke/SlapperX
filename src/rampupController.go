@@ -34,11 +34,16 @@ func (r *RampUpController) rateChangeListener() {
 // StartRampUpProcess starts the ramp-up process.
 func (r *RampUpController) startRampUpTimeProcess(rateChangerChan chan int64) {
 	r.startTime = time.Now()
+	lastRate := int64(0)
 	for {
 		now := time.Now()
 		elapsed := now.Sub(r.startTime)
 		if elapsed.Milliseconds() >= r.rampUpTime.Milliseconds() {
-			rateChangerChan <- r.maxRate.Load()
+			maxRate := r.maxRate.Load()
+			if maxRate != lastRate { // only send if rate has changed
+				rateChangerChan <- maxRate
+				lastRate = maxRate
+			}
 		} else {
 			rateChangerChan <- (elapsed.Milliseconds() * r.maxRate.Load()) / r.rampUpTime.Milliseconds()
 		}

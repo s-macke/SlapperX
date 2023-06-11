@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -14,9 +15,9 @@ type TracingClient struct {
 	transport          *http.Transport
 	dialer             net.Dialer
 	client             http.Client
-	currentConnections int
-	openedConnections  int
-	closedConnections  int
+	CurrentConnections int32
+	openedConnections  int32
+	closedConnections  int32
 }
 
 func NewTracingClient(timeout time.Duration) *TracingClient {
@@ -40,7 +41,7 @@ func NewTracingClient(timeout time.Duration) *TracingClient {
 		transport:          transport,
 		dialer:             dial,
 		client:             client,
-		currentConnections: 0,
+		CurrentConnections: 0,
 		openedConnections:  0,
 		closedConnections:  0,
 	}
@@ -51,7 +52,7 @@ func NewTracingClient(timeout time.Duration) *TracingClient {
 }
 
 func (t *TracingClient) String() {
-	fmt.Println("Current Connections:", t.currentConnections)
+	fmt.Println("Current Connections:", t.CurrentConnections)
 	fmt.Println("Opened Connections:", t.openedConnections)
 	fmt.Println("Closed Connections:", t.closedConnections)
 	fmt.Println("Force Attempt HTTP2:", t.transport.ForceAttemptHTTP2)
@@ -86,13 +87,13 @@ func (t *TracingClient) DialContext(ctx context.Context, network, address string
 	conn, err := t.dialer.DialContext(ctx, network, address)
 	c := TracingConnection{Conn: conn}
 	c.OnEventCallback = func(clientClosed bool, serverClosed bool, err error) {
-		t.closedConnections++
-		t.currentConnections--
+		atomic.AddInt32(&t.closedConnections, 1)
+		atomic.AddInt32(&t.CurrentConnections, -1)
 	}
 
 	if err == nil {
-		t.openedConnections++
-		t.currentConnections++
+		atomic.AddInt32(&t.openedConnections, 1)
+		atomic.AddInt32(&t.CurrentConnections, 1)
 	}
 	return c, err
 }
@@ -126,7 +127,7 @@ func call(tracingClient *TracingClient) {
 	}
 	end := time.Now().UnixNano()
 	fmt.Println(start/1e6, end/1e6, (end-start)/1e6, resp.Status,
-		tracingClient.currentConnections,
+		tracingClient.CurrentConnections,
 		tracingClient.openedConnections,
 		tracingClient.closedConnections,
 	)

@@ -30,7 +30,7 @@ func (t *Ticker) setTickDuration(rate int64) {
 		t.multiplier = 1
 	}
 	t.rate /= t.multiplier
-	t.tickDuration = time.Duration(1e9 / rate)
+	t.tickDuration = time.Duration(1e9 / t.rate)
 }
 
 // GetRateChanger returns a channel for changing the ticker's rate during operation.
