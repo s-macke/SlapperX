@@ -4,15 +4,20 @@ import (
 	"time"
 )
 
+type StatsResponse struct {
+	status           [1024]counter
+	ErrorEof         counter
+	ErrorTimeout     counter
+	ErrorConnRefused counter
+	ErrorNoSuchHost  counter
+}
+
 type Stats struct {
 	currentSetRate    counter
 	requestsSent      counter
 	responsesReceived counter
 
-	responses                 [1024]counter
-	responsesErrorEof         counter
-	responsesErrorTimeout     counter
-	responsesErrorConnRefused counter
+	responses StatsResponse
 
 	// ring buffer
 	timingsOk  [][]counter
@@ -44,8 +49,8 @@ func resetStats() {
 		}
 	}
 
-	for i := 0; i < len(s.responses); i++ {
-		s.responses[i].Store(0)
+	for i := 0; i < len(s.responses.status); i++ {
+		s.responses.status[i].Store(0)
 	}
 }
 

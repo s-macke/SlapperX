@@ -179,16 +179,19 @@ func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, cur
 
 	_, _ = fmt.Fprint(sb, "responses: ")
 
-	if stats.responsesErrorConnRefused > 0 {
-		_, _ = fmt.Fprintf(sb, "\033[31m[Conn refused]: %-6d\033[0m ", stats.responsesErrorConnRefused)
+	if stats.responses.ErrorNoSuchHost > 0 {
+		_, _ = fmt.Fprintf(sb, "\033[31m[No such host]: %-6d\033[0m ", stats.responses.ErrorNoSuchHost)
 	}
-	if stats.responsesErrorEof > 0 {
-		_, _ = fmt.Fprintf(sb, "\033[31m[EOF]: %-6d\033[0m ", stats.responsesErrorEof)
+	if stats.responses.ErrorConnRefused > 0 {
+		_, _ = fmt.Fprintf(sb, "\033[31m[Conn refused]: %-6d\033[0m ", stats.responses.ErrorConnRefused)
 	}
-	if stats.responsesErrorTimeout > 0 {
-		_, _ = fmt.Fprintf(sb, "\033[31m[Timeout]: %-6d\033[0m ", stats.responsesErrorTimeout)
+	if stats.responses.ErrorEof > 0 {
+		_, _ = fmt.Fprintf(sb, "\033[31m[EOF]: %-6d\033[0m ", stats.responses.ErrorEof)
 	}
-	for status, counter := range stats.responses {
+	if stats.responses.ErrorTimeout > 0 {
+		_, _ = fmt.Fprintf(sb, "\033[31m[Timeout]: %-6d\033[0m ", stats.responses.ErrorTimeout)
+	}
+	for status, counter := range stats.responses.status {
 		if c := counter.Load(); c > 0 {
 			if status >= 200 && status < 300 {
 				_, _ = fmt.Fprintf(sb, "\033[32m[%d]: %-6d\033[0m ", status, c)

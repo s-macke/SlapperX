@@ -7,6 +7,7 @@ import (
 	"github.com/s-macke/slapperx/src/tracing"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -66,6 +67,8 @@ func (trgt *Targeter) nextRequest() *http.Request {
 
 func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time, quit <-chan struct{}) {
 
+	var dnsError *net.DNSError
+
 	for {
 		select {
 		case <-ch:
@@ -100,20 +103,23 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 			status := 0
 			if err == nil {
 				status = response.StatusCode
-				stats.responses[status].Add(1)
+				stats.responses.status[status].Add(1)
 			} else {
 				switch {
 				case
 					errors.Is(err, io.EOF):
-					stats.responsesErrorEof.Add(1)
+					stats.responses.ErrorEof.Add(1)
 				case
 					errors.Is(err, syscall.ECONNREFUSED):
-					stats.responsesErrorConnRefused.Add(1)
+					stats.responses.ErrorConnRefused.Add(1)
 				case
 					os.IsTimeout(err):
-					stats.responsesErrorTimeout.Add(1)
+					stats.responses.ErrorTimeout.Add(1)
+				case
+					errors.As(err, &dnsError):
+					stats.responses.ErrorNoSuchHost.Add(1)
 				default:
-					stats.responses[0].Add(1)
+					stats.responses.status[0].Add(1)
 				}
 
 			}
