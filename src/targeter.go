@@ -24,9 +24,11 @@ type Targeter struct {
 	file            *os.File
 	fileWriter      *bufio.Writer
 	attackStartTime time.Time
+
+	verbose bool
 }
 
-func NewTargeter(requests *[]http.Request, timeout time.Duration, logFile string) *Targeter {
+func NewTargeter(requests *[]http.Request, timeout time.Duration, logFile string, verbose bool) *Targeter {
 	client := tracing.NewTracingClient(timeout)
 
 	trgt := &Targeter{
@@ -34,6 +36,7 @@ func NewTargeter(requests *[]http.Request, timeout time.Duration, logFile string
 		idx:      0,
 		requests: *requests,
 		file:     nil,
+		verbose:  verbose,
 	}
 
 	if logFile != "" {
@@ -77,26 +80,20 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 
 			start := time.Now()
 			response, err := client.Do(request)
+			if err != nil && trgt.verbose {
+				fmt.Println(request.Method, request.URL, err)
+			}
 			if err == nil {
 				_, err = io.ReadAll(response.Body)
+				if err != nil && trgt.verbose {
+					fmt.Println(request.Method, request.URL, err)
+				}
 				_ = response.Body.Close()
 			}
-			now := time.Now()
 
+			now := time.Now()
 			elapsed := now.Sub(start)
 			elapsedMs := float64(elapsed) / float64(time.Millisecond)
-			correctedElapsedMs := elapsedMs - ui.startMs
-			elapsedBucket := int(math.Log(correctedElapsedMs) / math.Log(ui.logBase))
-
-			// first bucket is for requests faster than minY,
-			// last of for ones slower then maxY
-			if elapsedBucket < 0 {
-				elapsedBucket = 0
-			} else if elapsedBucket >= int(ui.buckets)-1 {
-				elapsedBucket = int(ui.buckets) - 1
-			} else {
-				elapsedBucket = elapsedBucket + 1
-			}
 
 			stats.responsesReceived.Add(1)
 
@@ -121,14 +118,6 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 				default:
 					stats.responses.status[0].Add(1)
 				}
-
-			}
-
-			tOk, tBad := stats.getTimingsSlot(now)
-			if status >= 200 && status < 300 {
-				tOk[elapsedBucket].Add(1)
-			} else {
-				tBad[elapsedBucket].Add(1)
 			}
 
 			if trgt.file != nil {
@@ -141,6 +130,30 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 				if err != nil {
 					panic(err)
 				}
+			}
+
+			if trgt.verbose {
+				fmt.Println(request.Method, request.URL, response.StatusCode, elapsedMs)
+				continue
+			}
+			correctedElapsedMs := elapsedMs - ui.startMs
+			elapsedBucket := int(math.Log(correctedElapsedMs) / math.Log(ui.logBase))
+
+			// first bucket is for requests faster than minY,
+			// last of for ones slower then maxY
+			if elapsedBucket < 0 {
+				elapsedBucket = 0
+			} else if elapsedBucket >= int(ui.buckets)-1 {
+				elapsedBucket = int(ui.buckets) - 1
+			} else {
+				elapsedBucket = elapsedBucket + 1
+			}
+
+			tOk, tBad := stats.getTimingsSlot(now)
+			if status >= 200 && status < 300 {
+				tOk[elapsedBucket].Add(1)
+			} else {
+				tBad[elapsedBucket].Add(1)
 			}
 
 		case <-quit:

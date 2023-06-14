@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	statsLines = 3
+	statsLines = 4
 
 	reservedWidthSpace  = 40
 	reservedHeightSpace = 3
@@ -177,7 +177,7 @@ func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, cur
 	_, _ = fmt.Fprintf(sb, "in-flight: %-4d ", sent-recv)
 	_, _ = fmt.Fprintf(sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), currentSetRate.Load())
 
-	_, _ = fmt.Fprint(sb, "responses: ")
+	_, _ = fmt.Fprint(sb, "\r\nresponses: ")
 
 	if stats.responses.ErrorNoSuchHost > 0 {
 		_, _ = fmt.Fprintf(sb, "\033[31m[No such host]: %-6d\033[0m ", stats.responses.ErrorNoSuchHost)

@@ -1,6 +1,7 @@
 package slapperx
 
 import (
+	"fmt"
 	"github.com/s-macke/slapperx/src/httpfile"
 	"os"
 	"time"
@@ -18,11 +19,10 @@ const (
 var (
 	stats Stats
 	ui    *UI
+	trgt  *Targeter
 )
-var trgt *Targeter
 
 func Main() {
-
 	config := ParseFlags()
 
 	fs := os.DirFS(".")
@@ -30,15 +30,21 @@ func Main() {
 	if len(requests) == 0 {
 		panic("No Requests")
 	}
+	if config.Verbose {
+		fmt.Println("Requests:", len(requests))
+	}
 
-	trgt = NewTargeter(&requests, config.Timeout, config.LogFile)
+	trgt = NewTargeter(&requests, config.Timeout, config.LogFile, config.Verbose)
 	defer trgt.close()
-
-	ui = InitTerminal(config.MinY, config.MaxY)
-	defer ui.close()
+	if !config.Verbose {
+		ui = InitTerminal(config.MinY, config.MaxY)
+		defer ui.close()
+	}
 
 	stats = Stats{}
-	stats.initializeTimingsBucket(ui.buckets)
+	if !config.Verbose {
+		stats.initializeTimingsBucket(ui.buckets)
+	}
 
 	quit := make(chan struct{}, 1)
 
@@ -55,11 +61,17 @@ func Main() {
 	trgt.wg.Add(1)
 	go func() {
 		defer trgt.wg.Done()
-		ui.reporter(quit)
+		if !config.Verbose {
+			ui.reporter(quit)
+		}
 	}()
 
 	// blocking
-	ui.keyPressListener(rampUpController.GetRateChanger())
+	if config.Verbose {
+		<-make(chan bool) // just wait for Ctrl-C
+	} else {
+		ui.keyPressListener(rampUpController.GetRateChanger())
+	}
 
 	// bye
 	close(quit)

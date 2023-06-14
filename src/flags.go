@@ -15,6 +15,7 @@ type Config struct {
 	MaxY    time.Duration
 	RampUp  time.Duration
 	LogFile string
+	Verbose bool
 }
 
 func ParseFlags() *Config {
@@ -26,6 +27,7 @@ func ParseFlags() *Config {
 	maxY := flag.Duration("maxY", 100*time.Millisecond, "Max on Y axis")
 	rampUp := flag.Duration("rampup", 0*time.Second, "Ramp up time")
 	logFile := flag.String("log", "", "Output result as csv file")
+	verbose := flag.Bool("verbose", false, "Verbose mode (no UI)")
 	flag.Parse()
 	if len(*targets) == 0 {
 		flag.Usage()
@@ -40,5 +42,6 @@ func ParseFlags() *Config {
 		MaxY:    *maxY,
 		RampUp:  *rampUp,
 		LogFile: *logFile,
+		Verbose: *verbose,
 	}
 }
