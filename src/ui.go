@@ -6,7 +6,6 @@ import (
 	term "github.com/nsf/termbox-go"
 	terminal "golang.org/x/term"
 	"log"
-	"math"
 	"strings"
 	"time"
 )
@@ -37,27 +36,19 @@ type UI struct {
 	plotWidth  int
 	plotHeight int
 
-	minY, maxY float64
-
-	// first bucket is for requests faster then minY,
-	// last of for ones slower then maxY
-	buckets int
-	logBase float64
-	startMs float64
+	lbc *logBucketCalculator
 }
 
 // InitTerminal initializes the terminal and sets the UI dimensions
 func InitTerminal(minY time.Duration, maxY time.Duration) *UI {
-	ui := UI{
-		minY:  float64(minY / time.Millisecond),
-		maxY:  float64(maxY / time.Millisecond),
-		start: time.Now(),
-	}
 	if !terminal.IsTerminal(0) {
 		panic("Not a terminal")
 	}
-
+	ui := UI{
+		start: time.Now(),
+	}
 	ui.setWindowSize()
+	ui.lbc = newLogBucketCalculator(minY, maxY, ui.plotHeight)
 	return &ui
 }
 
@@ -82,12 +73,6 @@ func (ui *UI) setWindowSize() {
 	if ui.plotHeight <= reservedHeightSpace {
 		log.Fatal("not enough screen height, min 3 lines required")
 	}
-
-	deltaY := ui.maxY - ui.minY
-
-	ui.buckets = ui.plotHeight
-	ui.logBase = math.Pow(deltaY, 1./float64(ui.buckets-2))
-	ui.startMs = ui.minY + math.Pow(ui.logBase, 0)
 }
 
 func (ui *UI) listParameters() {
@@ -202,39 +187,12 @@ func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, cur
 	}
 }
 
-// createLabel creates a label for the histogram bucket
-func (ui *UI) createLabel(bkt int) string {
-	var label string
-	if bkt == 0 {
-		if ui.startMs >= 10 {
-			label = fmt.Sprintf("<%.0f", ui.startMs)
-		} else {
-			label = fmt.Sprintf("<%.1f", ui.startMs)
-		}
-	} else if bkt == ui.buckets-1 {
-		if ui.maxY >= 10 {
-			label = fmt.Sprintf("%3.0f+", ui.maxY)
-		} else {
-			label = fmt.Sprintf("%.1f+", ui.maxY)
-		}
-	} else {
-		beginMs := ui.minY + math.Pow(ui.logBase, float64(bkt-1))
-		endMs := ui.minY + math.Pow(ui.logBase, float64(bkt))
-		if endMs >= 10 {
-			label = fmt.Sprintf("%3.0f-%3.0f", beginMs, endMs)
-		} else {
-			label = fmt.Sprintf("%.1f-%.1f", beginMs, endMs)
-		}
-	}
-	return label
-}
-
 // drawHistogram draws the histogram of response times
 func (ui *UI) drawHistogram(currentRate counter, currentSetRate counter) {
 	var sb strings.Builder
 	sb.Grow(int(ui.terminalWidth*ui.terminalHeight*2 + ui.terminalHeight*(5*5+12*2))) // just a guess
 
-	colorMultiplier := float64(len(colors)) / float64(ui.buckets)
+	colorMultiplier := float64(len(colors)) / float64(ui.lbc.buckets)
 	barWidth := int(ui.plotWidth) - reservedWidthSpace // reserve some space on right and left
 
 	tOk, tBad, max := ui.prepareHistogramData()
@@ -244,8 +202,8 @@ func (ui *UI) drawHistogram(currentRate counter, currentSetRate counter) {
 	_, _ = fmt.Fprint(&sb, "\r\n\r\n")
 
 	width := float64(barWidth) / float64(max)
-	for bkt := 0; bkt < ui.buckets; bkt++ {
-		label := ui.createLabel(bkt)
+	for bkt := 0; bkt < ui.lbc.buckets; bkt++ {
+		label := ui.lbc.createLabel(bkt)
 
 		widthOk := int(float64(tOk[bkt]) * width)
 		widthBad := int(float64(tBad[bkt]) * width)

@@ -67,7 +67,6 @@ func (s *Stats) initializeTimingsBucket(buckets int) {
 
 	go func() {
 		for now := range time.Tick(screenRefreshInterval) {
-			// TODO account for missing ticks
 			// clean next timing slot which is last one in ring buffer
 			next := now.Add(screenRefreshInterval)
 			tOk, tBad := s.getTimingsSlot(next)

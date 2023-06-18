@@ -43,7 +43,7 @@ func Main() {
 
 	stats = Stats{}
 	if !config.Verbose {
-		stats.initializeTimingsBucket(ui.buckets)
+		stats.initializeTimingsBucket(ui.lbc.buckets)
 	}
 
 	quit := make(chan struct{}, 1)

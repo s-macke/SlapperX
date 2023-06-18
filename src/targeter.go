@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/s-macke/slapperx/src/tracing"
 	"io"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -136,19 +135,8 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 				fmt.Println(request.Method, request.URL, response.StatusCode, elapsedMs)
 				continue
 			}
-			correctedElapsedMs := elapsedMs - ui.startMs
-			elapsedBucket := int(math.Log(correctedElapsedMs) / math.Log(ui.logBase))
 
-			// first bucket is for requests faster than minY,
-			// last of for ones slower then maxY
-			if elapsedBucket < 0 {
-				elapsedBucket = 0
-			} else if elapsedBucket >= int(ui.buckets)-1 {
-				elapsedBucket = int(ui.buckets) - 1
-			} else {
-				elapsedBucket = elapsedBucket + 1
-			}
-
+			elapsedBucket := ui.lbc.calculateBucket(elapsedMs)
 			tOk, tBad := stats.getTimingsSlot(now)
 			if status >= 200 && status < 300 {
 				tOk[elapsedBucket].Add(1)
