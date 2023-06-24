@@ -129,28 +129,6 @@ func (ui *UI) handleKeyPress(ev term.Event, rateChanger chan<- int64) bool {
 	return false
 }
 
-// prepareHistogramData prepares data for histogram by aggregating OK and Bad requests
-func (ui *UI) prepareHistogramData() ([]int64, []int64, int64) {
-	tOk := make([]int64, len(stats.timingsOk))
-	tBad := make([]int64, len(stats.timingsBad))
-	max := int64(1)
-
-	for i := 0; i < len(stats.timingsOk); i++ {
-		ok := stats.timingsOk[i]
-		bad := stats.timingsBad[i]
-
-		for j := 0; j < len(ok); j++ {
-			tOk[j] += ok[j].Load()
-			tBad[j] += bad[j].Load()
-			if sum := tOk[j] + tBad[j]; sum > max {
-				max = sum
-			}
-		}
-	}
-
-	return tOk, tBad, max
-}
-
 // printHistogramHeader prints the header of the histogram with sent, in-flight, and responses information
 func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, currentSetRate counter) {
 	sent := stats.requestsSent.Load()
@@ -195,7 +173,7 @@ func (ui *UI) drawHistogram(currentRate counter, currentSetRate counter) {
 	colorMultiplier := float64(len(colors)) / float64(ui.lbc.buckets)
 	barWidth := int(ui.plotWidth) - reservedWidthSpace // reserve some space on right and left
 
-	tOk, tBad, max := ui.prepareHistogramData()
+	tOk, tBad, max := stats.timings.prepareHistogramData()
 
 	_, _ = fmt.Fprint(&sb, "\033[H") // clean screen
 	ui.printHistogramHeader(&sb, currentRate, currentSetRate)

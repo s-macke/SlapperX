@@ -135,13 +135,15 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 				fmt.Println(request.Method, request.URL, response.StatusCode, elapsedMs)
 				continue
 			}
+			// to test the latency distribution
+			// elapsedMs = (math.Sin(elapsedMs)+1.1)*30. + math.Cos(float64(start.UnixMilli()/5000))*100 + 100.
 
 			elapsedBucket := ui.lbc.calculateBucket(elapsedMs)
-			tOk, tBad := stats.getTimingsSlot(now)
+			timings := stats.timings.getTimingsSlot(now)
 			if status >= 200 && status < 300 {
-				tOk[elapsedBucket].Add(1)
+				timings[elapsedBucket].Ok.Add(1)
 			} else {
-				tBad[elapsedBucket].Add(1)
+				timings[elapsedBucket].Bad.Add(1)
 			}
 
 		case <-quit:
