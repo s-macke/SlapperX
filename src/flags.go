@@ -20,7 +20,7 @@ type Config struct {
 
 func ParseFlags() *Config {
 	targets := flag.String("targets", "", "Targets file")
-	workers := flag.Uint("workers", 8, "Number of workers")
+	workers := flag.Uint("workers", 50, "Number of workers")
 	timeout := flag.Duration("timeout", 30*time.Second, "Requests timeout")
 	rate := flag.Int64("rate", 50, "Requests per second")
 	minY := flag.Duration("minY", 1, "Min on Y axis (default 1ms)")
