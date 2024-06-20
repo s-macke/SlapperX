@@ -23,7 +23,7 @@ func ParseFlags() *Config {
 	workers := flag.Uint("workers", 8, "Number of workers")
 	timeout := flag.Duration("timeout", 30*time.Second, "Requests timeout")
 	rate := flag.Int64("rate", 50, "Requests per second")
-	minY := flag.Duration("minY", 0, "Min on Y axis (default 0ms)")
+	minY := flag.Duration("minY", 1, "Min on Y axis (default 1ms)")
 	maxY := flag.Duration("maxY", 100*time.Millisecond, "Max on Y axis")
 	rampUp := flag.Duration("rampup", 0*time.Second, "Ramp up time")
 	logFile := flag.String("log", "", "Output result as csv file")
