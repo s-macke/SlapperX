@@ -6,6 +6,7 @@ import (
 	term "github.com/nsf/termbox-go"
 	terminal "golang.org/x/term"
 	"log"
+	"os"
 	"strings"
 	"time"
 )
@@ -41,7 +42,7 @@ type UI struct {
 
 // InitTerminal initializes the terminal and sets the UI dimensions
 func InitTerminal(minY time.Duration, maxY time.Duration) *UI {
-	if !terminal.IsTerminal(0) {
+	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
 		panic("Not a terminal")
 	}
 	ui := UI{
