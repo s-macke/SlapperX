@@ -16,18 +16,27 @@ const (
 
 // ring moving window buffer
 type MovingWindow struct {
-	counts [][]OkBadCounter
-	state  []windowState
+	counts   [][]OkBadCounter
+	state    []windowState
+	nwindows int
+	nbuckets int
+	tOk      []int64
+	tBad     []int64
 }
 
-func newMovingWindow(nwindows int, buckets int) *MovingWindow {
-	mw := &MovingWindow{}
+func newMovingWindow(nwindows int, nbuckets int) *MovingWindow {
+	mw := &MovingWindow{
+		nwindows: nwindows,
+		nbuckets: nbuckets,
+		tOk:      make([]int64, nbuckets),
+		tBad:     make([]int64, nbuckets),
+	}
 	mw.state = make([]windowState, nwindows)
 
 	mw.counts = make([][]OkBadCounter, nwindows)
 	for i := 0; i < nwindows; i++ {
 		mw.state[i] = Filled
-		mw.counts[i] = make([]OkBadCounter, buckets)
+		mw.counts[i] = make([]OkBadCounter, nbuckets)
 	}
 	return mw
 }
@@ -63,22 +72,24 @@ func (mw *MovingWindow) ResetSlot(slot int) {
 
 // prepareHistogramData prepares data for histogram by aggregating OK and Bad requests
 func (mw *MovingWindow) prepareHistogramData() ([]int64, []int64, int64) {
-	tOk := make([]int64, len(mw.counts))
-	tBad := make([]int64, len(mw.counts))
+	for j := range mw.nbuckets {
+		mw.tOk[j] = 0
+		mw.tBad[j] = 0
+	}
 
-	max := int64(1)
+	maximum := int64(1)
 
-	for i := 0; i < len(mw.counts); i++ {
+	for i := 0; i < mw.nwindows; i++ {
 		okBad := mw.counts[i]
 
-		for j := 0; j < len(okBad); j++ {
-			tOk[j] += okBad[j].Ok.Load()
-			tBad[j] += okBad[j].Bad.Load()
-			if sum := tOk[j] + tBad[j]; sum > max {
-				max = sum
+		for j := 0; j < mw.nbuckets; j++ {
+			mw.tOk[j] += okBad[j].Ok.Load()
+			mw.tBad[j] += okBad[j].Bad.Load()
+			if sum := mw.tOk[j] + mw.tBad[j]; sum > maximum {
+				maximum = sum
 			}
 		}
 	}
 
-	return tOk, tBad, max
+	return mw.tOk, mw.tBad, maximum
 }
