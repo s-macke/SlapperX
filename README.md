@@ -48,7 +48,7 @@ Here is an example of how to use Slapper:
 ### Flags
 
 - `-targets`: Targets file containing the REST request data to be tested in the [.http format](https://www.jetbrains.com/help/idea/exploring-http-syntax.html)..
-- `-workers`: Number of workers sending requests concurrently (default 8).
+- `-workers`: Number of workers sending requests concurrently (default 50).
 - `-timeout`: Request timeout duration (default 30 seconds).
 - `-rate`: Desired request rate per second (default 50).
 - `-minY`: Minimum Y-axis value for the histogram (default 0 milliseconds).
