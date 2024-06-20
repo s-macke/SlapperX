@@ -42,12 +42,12 @@ go build
 Here is an example of how to use Slapper:
 
 ```bash
-./slapper -targets targets.txt -workers 8 -timeout 30s -rate 50 -minY 0ms -maxY 100ms -rampup 10s
+./slapper -targets targets.http -workers 8 -timeout 30s -rate 50 -minY 0ms -maxY 100ms -rampup 10s
 ```
 
 ### Flags
 
-- `-targets`: Targets file containing the list of URLs to be tested.
+- `-targets`: Targets file containing the REST request data to be tested in the [.http format](https://www.jetbrains.com/help/idea/exploring-http-syntax.html)..
 - `-workers`: Number of workers sending requests concurrently (default 8).
 - `-timeout`: Request timeout duration (default 30 seconds).
 - `-rate`: Desired request rate per second (default 50).
@@ -68,7 +68,7 @@ Here is an example of how to use Slapper:
 
 The targets file follows the same format as the Jetbrains `.http` files.
 You can find the full specification in the
-[JetBrains documentation](https://www.jetbrains.com/help/idea/exploring-http-syntax.html#short-form-for-get-requests).
+[JetBrains documentation](https://www.jetbrains.com/help/idea/exploring-http-syntax.html).
 	
 Here is an example:
 
