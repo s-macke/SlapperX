@@ -59,7 +59,7 @@ func (ui *UI) close() {
 
 func (ui *UI) setWindowSize() {
 	var err error
-	ui.terminalWidth, ui.terminalHeight, err = terminal.GetSize(0)
+	ui.terminalWidth, ui.terminalHeight, err = terminal.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		panic(err)
 	}
