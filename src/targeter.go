@@ -80,12 +80,12 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 			start := time.Now()
 			response, err := client.Do(request)
 			if err != nil && trgt.verbose {
-				fmt.Println(request.Method, request.URL, err)
+				fmt.Println("Error:", request.Method, request.URL, err)
 			}
 			if err == nil {
 				_, err = io.ReadAll(response.Body)
 				if err != nil && trgt.verbose {
-					fmt.Println(request.Method, request.URL, err)
+					fmt.Println("Error:", request.Method, request.URL, err)
 				}
 				_ = response.Body.Close()
 			}
@@ -132,7 +132,7 @@ func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time,
 			}
 
 			if trgt.verbose {
-				fmt.Println(request.Method, request.URL, response.StatusCode, elapsedMs)
+				fmt.Println(request.Method, request.URL, status, elapsedMs)
 				continue
 			}
 			// to test the latency distribution
