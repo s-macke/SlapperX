@@ -42,7 +42,7 @@ type UI struct {
 
 // InitTerminal initializes the terminal and sets the UI dimensions
 func InitTerminal(minY time.Duration, maxY time.Duration) *UI {
-	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
+	if !terminal.IsTerminal(int(os.Stdout.Fd())) {
 		panic("Not a terminal")
 	}
 	ui := UI{
