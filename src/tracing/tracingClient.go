@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type TracingClient struct {
+type Client struct {
 	transport          *http.Transport
 	dialer             net.Dialer
 	client             http.Client
@@ -20,7 +20,7 @@ type TracingClient struct {
 	closedConnections  int32
 }
 
-func NewTracingClient(timeout time.Duration) *TracingClient {
+func NewTracingClient(timeout time.Duration) *Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	transport.MaxIdleConns = 0 // No Limit
@@ -37,7 +37,7 @@ func NewTracingClient(timeout time.Duration) *TracingClient {
 		Timeout:   timeout,
 	}
 
-	tc := &TracingClient{
+	tc := &Client{
 		transport:          transport,
 		dialer:             dial,
 		client:             client,
@@ -51,7 +51,7 @@ func NewTracingClient(timeout time.Duration) *TracingClient {
 	return tc
 }
 
-func (t *TracingClient) String() {
+func (t *Client) String() {
 	fmt.Println("Current Connections:", t.CurrentConnections)
 	fmt.Println("Opened Connections:", t.openedConnections)
 	fmt.Println("Closed Connections:", t.closedConnections)
@@ -83,9 +83,9 @@ func (t *TracingClient) String() {
 	fmt.Println("Client Cookie Jar:", t.client.Jar)
 }
 
-func (t *TracingClient) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+func (t *Client) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	conn, err := t.dialer.DialContext(ctx, network, address)
-	c := TracingConnection{Conn: conn}
+	c := &Connection{Conn: conn}
 	c.OnEventCallback = func(clientClosed bool, serverClosed bool, err error) {
 		atomic.AddInt32(&t.closedConnections, 1)
 		atomic.AddInt32(&t.CurrentConnections, -1)
@@ -98,12 +98,12 @@ func (t *TracingClient) DialContext(ctx context.Context, network, address string
 	return c, err
 }
 
-func (t *TracingClient) Do(req *http.Request) (resp *http.Response, err error) {
+func (t *Client) Do(req *http.Request) (resp *http.Response, err error) {
 	resp, err = t.client.Do(req)
 	return
 }
 
-func call(tracingClient *TracingClient) {
+func call(tracingClient *Client) {
 	req, err := http.NewRequest("GET", "http://localhost:8080/hello/", nil)
 	req.Header.Set("Connection", "keep-alive")
 

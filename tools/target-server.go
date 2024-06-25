@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -10,7 +10,7 @@ import (
 
 func main() {
 	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		ioutil.ReadAll(r.Body)
+		io.ReadAll(r.Body)
 		r.Body.Close()
 
 		sum := 0

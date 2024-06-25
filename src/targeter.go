@@ -15,7 +15,7 @@ import (
 )
 
 type Targeter struct {
-	client   *tracing.TracingClient
+	client   *tracing.Client
 	wg       sync.WaitGroup
 	idx      counter
 	requests []http.Request
@@ -67,7 +67,7 @@ func (trgt *Targeter) nextRequest() *http.Request {
 	return &trgt.requests[idx%len(trgt.requests)]
 }
 
-func (trgt *Targeter) attack(client *tracing.TracingClient, ch <-chan time.Time, quit <-chan struct{}) {
+func (trgt *Targeter) attack(client *tracing.Client, ch <-chan time.Time, quit <-chan struct{}) {
 
 	var dnsError *net.DNSError
 
