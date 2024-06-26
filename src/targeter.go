@@ -64,7 +64,9 @@ func (trgt *Targeter) close() {
 
 func (trgt *Targeter) nextRequest() *http.Request {
 	idx := int(trgt.idx.Add(1))
-	return &trgt.requests[idx%len(trgt.requests)]
+	request := trgt.requests[idx%len(trgt.requests)]
+	request.Body, _ = request.GetBody()
+	return &request
 }
 
 func (trgt *Targeter) attack(client *tracing.Client, ch <-chan time.Time, quit <-chan struct{}) {
