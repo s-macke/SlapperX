@@ -7,19 +7,21 @@ import (
 )
 
 type Config struct {
-	Workers uint
-	Timeout time.Duration
-	Targets string
-	Rate    int64
-	MinY    time.Duration
-	MaxY    time.Duration
-	RampUp  time.Duration
-	LogFile string
-	Verbose bool
+	Workers   uint
+	Timeout   time.Duration
+	Targets   string
+	Overrides string
+	Rate      int64
+	MinY      time.Duration
+	MaxY      time.Duration
+	RampUp    time.Duration
+	LogFile   string
+	Verbose   bool
 }
 
 func ParseFlags() *Config {
 	targets := flag.String("targets", "", "Targets file")
+	overrides := flag.String("overrides", "", "Overrides file")
 	workers := flag.Uint("workers", 50, "Number of workers")
 	timeout := flag.Duration("timeout", 30*time.Second, "Requests timeout")
 	rate := flag.Int64("rate", 50, "Requests per second")
@@ -34,14 +36,15 @@ func ParseFlags() *Config {
 		os.Exit(0)
 	}
 	return &Config{
-		Workers: *workers,
-		Timeout: *timeout,
-		Targets: *targets,
-		Rate:    *rate,
-		MinY:    *minY,
-		MaxY:    *maxY,
-		RampUp:  *rampUp,
-		LogFile: *logFile,
-		Verbose: *verbose,
+		Workers:   *workers,
+		Timeout:   *timeout,
+		Targets:   *targets,
+		Overrides: *overrides,
+		Rate:      *rate,
+		MinY:      *minY,
+		MaxY:      *maxY,
+		RampUp:    *rampUp,
+		LogFile:   *logFile,
+		Verbose:   *verbose,
 	}
 }

@@ -1,12 +1,13 @@
 package httpfile
 
 import (
-	"bufio"
-	"io"
-	"io/fs"
+	"bytes"
+	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
+	"text/template"
 )
 
 const (
@@ -20,12 +21,12 @@ const (
 type Parser struct {
 	reqs    []http.Request
 	req     HTTPFile
-	scanner *bufio.Scanner
+	content string
 }
 
-func newParser(r io.Reader) (p *Parser) {
+func newParser(r string) (p *Parser) {
 	_p := new(Parser)
-	_p.scanner = bufio.NewScanner(r)
+	_p.content = r
 	_p.req = NewHTTPFile()
 	return _p
 }
@@ -251,8 +252,7 @@ func fillParameters(request *HTTPFile) {
 func (p *Parser) parse(addKeepAlive bool) {
 	part := PREMETHOD
 
-	for p.scanner.Scan() {
-		line := p.scanner.Text()
+	for _, line := range strings.Split(strings.ReplaceAll(p.content, "\r\n", "\n"), "\n") {
 		//fmt.Println(scanner.Text())
 
 		newpart := p.parsePart(part, line)
@@ -272,25 +272,28 @@ func (p *Parser) parse(addKeepAlive bool) {
 		p.reqs = append(p.reqs, *PrepareRequest(p.req, addKeepAlive))
 		p.req = NewHTTPFile()
 	}
-
-	if err := p.scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
 }
 
-func HTTPFileParser(templatePath fs.FS, path string, addKeepAlive bool) []http.Request {
-	file, err := templatePath.Open(path)
+func HTTPFileParser(path string, overridesPath string, addKeepAlive bool) []http.Request {
+	httpFile, err := template.ParseGlob(path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func(file fs.File) {
-		err := file.Close()
+	var overrides any = nil
+	overridesFile, err := os.ReadFile(overridesPath)
+	if err == nil {
+		err := json.Unmarshal(overridesFile, &overrides)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
-	}(file)
+	}
+	var buff bytes.Buffer
+	err = httpFile.Execute(&buff, overrides)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	p := newParser(file)
+	p := newParser(buff.String())
 	p.parse(addKeepAlive)
 
 	return p.reqs
