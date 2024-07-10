@@ -3,7 +3,6 @@ package slapperx
 import (
 	"fmt"
 	"github.com/s-macke/slapperx/src/httpfile"
-	"os"
 	"time"
 )
 
@@ -25,8 +24,7 @@ var (
 func Main() {
 	config := ParseFlags()
 
-	fs := os.DirFS(".")
-	requests := httpfile.HTTPFileParser(fs, config.Targets, true)
+	requests := httpfile.HTTPFileParser(config.Targets, config.Overrides, true)
 	if len(requests) == 0 {
 		panic("No Requests")
 	}
