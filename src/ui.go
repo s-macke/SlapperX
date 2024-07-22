@@ -3,7 +3,6 @@ package slapperx
 import (
 	"bytes"
 	"fmt"
-	term "github.com/nsf/termbox-go"
 	terminal "golang.org/x/term"
 	"log"
 	"math"
@@ -86,49 +85,6 @@ func (ui *UI) listParameters() {
 		fmt.Printf("Max response time: %s\n", stats.maxResponseTime.Load())
 		fmt.Printf("Average response time: %s\n", stats.avgResponseTime.Load())
 	*/
-}
-
-// keyPressListener listens for key presses and sends rate changes to rateChanger channel
-func (ui *UI) keyPressListener(rateChanger chan<- float64) {
-	// start keyPress listener
-	err := term.Init()
-	term.HideCursor()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer term.Close()
-
-	for {
-		switch ev := term.PollEvent(); ev.Type {
-		case term.EventKey:
-			if ui.handleKeyPress(ev, rateChanger) {
-				return
-			}
-		case term.EventError:
-			log.Fatal(ev.Err)
-		}
-	}
-}
-
-// handleKeyPress processes key press events and updates the rateChanger channel
-func (ui *UI) handleKeyPress(ev term.Event, rateChanger chan<- float64) bool {
-	switch ev.Key {
-	case term.KeyCtrlC:
-		return true
-	default:
-		switch ev.Ch {
-		case 'q':
-			return true
-		case 'r':
-			stats.reset()
-		case 'k': // up
-			rateChanger <- rateIncreaseStep
-		case 'j':
-			rateChanger <- rateDecreaseStep
-		}
-	}
-	return false
 }
 
 // printHistogramHeader prints the header of the histogram with sent, in-flight, and responses information

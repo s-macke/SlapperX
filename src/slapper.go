@@ -68,7 +68,7 @@ func Main() {
 	if config.Verbose {
 		<-make(chan bool) // just wait for Ctrl-C
 	} else {
-		ui.keyPressListener(rampUpController.GetRateChanger())
+		keyPressListener(rampUpController.GetRateChanger())
 	}
 
 	// bye
