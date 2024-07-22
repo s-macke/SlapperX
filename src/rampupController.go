@@ -1,6 +1,7 @@
 package slapperx
 
 import (
+	"math"
 	"time"
 )
 
@@ -27,6 +28,8 @@ func (r *RampUpController) rateChangeListener() {
 		select {
 		case rateChange := <-r.rateChangerChan:
 			r.maxRate += rateChange
+			r.maxRate = math.Max(0.0001, r.maxRate)
+
 		}
 	}
 }

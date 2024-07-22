@@ -53,6 +53,9 @@ func (mw *MovingWindow) getTimingsSlot(now time.Time) []OkBadCounter {
 }
 
 func (mw *MovingWindow) Reset() {
+	if mw.counts == nil {
+		return
+	}
 	for _, e := range mw.counts {
 		for j := 0; j < len(e); j++ {
 			e[j].Ok.Store(0)

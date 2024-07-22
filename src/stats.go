@@ -19,8 +19,7 @@ type Stats struct {
 	timings *MovingWindow
 }
 
-func resetStats() {
-	s := Stats{}
+func (s *Stats) reset() {
 	s.requestsSent.Store(0)
 	s.responsesReceived.Store(0)
 

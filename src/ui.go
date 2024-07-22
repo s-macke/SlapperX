@@ -121,7 +121,7 @@ func (ui *UI) handleKeyPress(ev term.Event, rateChanger chan<- float64) bool {
 		case 'q':
 			return true
 		case 'r':
-			resetStats()
+			stats.reset()
 		case 'k': // up
 			rateChanger <- rateIncreaseStep
 		case 'j':
