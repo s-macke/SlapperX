@@ -5,36 +5,36 @@ import (
 )
 
 type Ticker struct {
-	rate            int64
+	rate            float64
 	multiplier      int64
 	tickDuration    time.Duration
-	rateChangerChan chan int64
+	rateChangerChan chan float64
 }
 
 // NewTicker creates a new ticker instance with a given rate and ramp-up time.
-func NewTicker(rate int64) *Ticker {
+func NewTicker(rate float64) *Ticker {
 	t := &Ticker{
-		rateChangerChan: make(chan int64),
+		rateChangerChan: make(chan float64),
 	}
 	t.setTickDuration(rate)
 	return t
 }
 
 // setTickDuration sets the duration between ticks based on the given rate.
-func (t *Ticker) setTickDuration(rate int64) {
-	const maxTickRate int64 = 100
+func (t *Ticker) setTickDuration(rate float64) {
+	const maxTickRate float64 = 100.
 
 	t.rate = rate
-	t.multiplier = rate / maxTickRate
+	t.multiplier = int64(rate / maxTickRate)
 	if t.multiplier < 1 {
 		t.multiplier = 1
 	}
-	t.rate /= t.multiplier
-	t.tickDuration = time.Duration(1e9 / t.rate)
+	t.rate /= float64(t.multiplier)
+	t.tickDuration = time.Duration(1.e9 / t.rate)
 }
 
 // GetRateChanger returns a channel for changing the ticker's rate during operation.
-func (t *Ticker) GetRateChanger() chan int64 {
+func (t *Ticker) GetRateChanger() chan float64 {
 	return t.rateChangerChan
 }
 
@@ -44,18 +44,18 @@ func (t *Ticker) Start(quit <-chan struct{}) <-chan time.Time {
 
 	// start main workers
 	go func() {
-		stats.currentSetRate.Store(t.rate)
+		stats.currentSetRate = t.rate
 		tck := time.NewTicker(t.tickDuration)
 
 		for {
 			select {
 			case newRate := <-t.rateChangerChan:
-				stats.currentSetRate.Store(newRate)
+				stats.currentSetRate = newRate
 				if newRate > 0 {
 					t.setTickDuration(newRate)
 					tck.Reset(t.tickDuration)
 				} else {
-					stats.currentSetRate.Store(newRate)
+					stats.currentSetRate = newRate
 				}
 
 			case onTick := <-tck.C:

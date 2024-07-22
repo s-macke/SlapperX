@@ -11,7 +11,7 @@ type Config struct {
 	Timeout   time.Duration
 	Targets   string
 	Overrides string
-	Rate      int64
+	Rate      float64
 	MinY      time.Duration
 	MaxY      time.Duration
 	RampUp    time.Duration
@@ -24,7 +24,7 @@ func ParseFlags() *Config {
 	overrides := flag.String("overrides", "", "Overrides file")
 	workers := flag.Uint("workers", 50, "Number of workers")
 	timeout := flag.Duration("timeout", 30*time.Second, "Requests timeout")
-	rate := flag.Int64("rate", 50, "Requests per second")
+	rate := flag.Float64("rate", 50.0, "Requests per second.")
 	minY := flag.Duration("minY", 1, "Min on Y axis (default 1ms)")
 	maxY := flag.Duration("maxY", 100*time.Millisecond, "Max on Y axis")
 	rampUp := flag.Duration("rampup", 0*time.Second, "Ramp up time")

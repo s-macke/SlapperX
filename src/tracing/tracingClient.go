@@ -52,6 +52,8 @@ func NewTracingClient(timeout time.Duration) *Client {
 }
 
 func (t *Client) String() {
+	//fmt.Println("\033[H") // clean screen
+	fmt.Println("\033[2J")
 	fmt.Println("Current Connections:", t.CurrentConnections)
 	fmt.Println("Opened Connections:", t.openedConnections)
 	fmt.Println("Closed Connections:", t.closedConnections)

@@ -20,15 +20,20 @@ func newLogBucketCalculator(minY time.Duration, maxY time.Duration, buckets int)
 	lbc := &logBucketCalculator{
 		minY:    float64(minY / time.Millisecond),
 		maxY:    float64(maxY / time.Millisecond),
-		buckets: buckets,
+		buckets: -1,
 	}
+	lbc.updateBucket(buckets)
+	return lbc
+}
 
+func (lbc *logBucketCalculator) updateBucket(buckets int) {
+	if lbc.buckets == buckets {
+		return
+	}
+	lbc.buckets = buckets
 	deltaY := lbc.maxY - lbc.minY
-
 	lbc.logBase = math.Pow(deltaY, 1./float64(buckets-2))
 	lbc.startMs = lbc.minY + math.Pow(lbc.logBase, 0)
-
-	return lbc
 }
 
 func (lbc *logBucketCalculator) calculateBucket(time float64) int {

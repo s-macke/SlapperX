@@ -9,7 +9,7 @@ type StatsResponse struct {
 }
 
 type Stats struct {
-	currentSetRate    counter
+	currentSetRate    float64
 	requestsSent      counter
 	responsesReceived counter
 

@@ -6,6 +6,7 @@ import (
 	term "github.com/nsf/termbox-go"
 	terminal "golang.org/x/term"
 	"log"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -88,7 +89,7 @@ func (ui *UI) listParameters() {
 }
 
 // keyPressListener listens for key presses and sends rate changes to rateChanger channel
-func (ui *UI) keyPressListener(rateChanger chan<- int64) {
+func (ui *UI) keyPressListener(rateChanger chan<- float64) {
 	// start keyPress listener
 	err := term.Init()
 	term.HideCursor()
@@ -111,7 +112,7 @@ func (ui *UI) keyPressListener(rateChanger chan<- int64) {
 }
 
 // handleKeyPress processes key press events and updates the rateChanger channel
-func (ui *UI) handleKeyPress(ev term.Event, rateChanger chan<- int64) bool {
+func (ui *UI) handleKeyPress(ev term.Event, rateChanger chan<- float64) bool {
 	switch ev.Key {
 	case term.KeyCtrlC:
 		return true
@@ -131,7 +132,7 @@ func (ui *UI) handleKeyPress(ev term.Event, rateChanger chan<- int64) bool {
 }
 
 // printHistogramHeader prints the header of the histogram with sent, in-flight, and responses information
-func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, currentSetRate counter) {
+func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, currentSetRate float64) {
 	sent := stats.requestsSent.Load()
 	recv := stats.responsesReceived.Load()
 
@@ -139,7 +140,12 @@ func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, cur
 	_, _ = fmt.Fprintf(sb, "sent: %-5d ", sent)
 	//_, _ = fmt.Fprintf(sb, "connections: %-5d ", trgt.client.CurrentConnections)
 	_, _ = fmt.Fprintf(sb, "in-flight: %-4d ", sent-recv)
-	_, _ = fmt.Fprintf(sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), currentSetRate.Load())
+	setRateI, setRatef := math.Modf(currentSetRate)
+	if setRatef < 1e-2 {
+		_, _ = fmt.Fprintf(sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), int(setRateI))
+	} else {
+		_, _ = fmt.Fprintf(sb, "\033[96mrate: %4d/%.1f RPS\033[0m ", currentRate.Load(), currentSetRate)
+	}
 
 	_, _ = fmt.Fprint(sb, "\r\nresponses: ")
 
@@ -167,9 +173,9 @@ func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, cur
 }
 
 // drawHistogram draws the histogram of response times
-func (ui *UI) drawHistogram(currentRate counter, currentSetRate counter) {
+func (ui *UI) drawHistogram(currentRate counter, currentSetRate float64) {
 	var sb strings.Builder
-	sb.Grow(int(ui.terminalWidth*ui.terminalHeight*2 + ui.terminalHeight*(5*5+12*2))) // just a guess
+	sb.Grow(ui.terminalWidth*ui.terminalHeight*2 + ui.terminalHeight*(5*5+12*2)) // just a guess
 
 	colorMultiplier := float64(len(colors)) / float64(ui.lbc.buckets)
 	barWidth := int(ui.plotWidth) - reservedWidthSpace // reserve some space on right and left
@@ -233,6 +239,7 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 	for {
 		select {
 		case <-ticker:
+			//trgt.client.String()
 			ui.drawHistogram(currentRate, stats.currentSetRate)
 		case <-quit:
 			return
