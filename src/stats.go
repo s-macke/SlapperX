@@ -33,3 +33,10 @@ func (s *Stats) reset() {
 func (s *Stats) initializeTimingsBucket(buckets int) {
 	s.timings = newMovingWindow(movingWindowsSize*screenRefreshFrequency, buckets)
 }
+
+func (s *Stats) getInFlightRequests() int64 {
+	sent := s.requestsSent.Load()
+	recv := s.responsesReceived.Load()
+	return sent - recv
+
+}

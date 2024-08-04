@@ -31,12 +31,24 @@ func Main() {
 	if config.Verbose {
 		fmt.Println("Requests:", len(requests))
 	}
+	quit := make(chan struct{}, 1)
 
-	trgt = NewTargeter(&requests, config.Timeout, config.LogFile, config.Verbose)
-	defer trgt.close()
+	var logFile *LogFile = nil
+	if config.LogFile != "" {
+		logFile = NewLogFile(config.LogFile)
+		defer logFile.Close()
+	}
+
+	trgt = NewTargeter(&requests, config.Timeout, logFile, config.Verbose)
+
+	defer func() {
+		close(quit)  // send all threads the quit signal
+		trgt.Close() // wait and Close
+	}()
+
 	if !config.Verbose {
 		ui = InitTerminal(config.MinY, config.MaxY)
-		defer ui.close()
+		defer ui.Close()
 	}
 
 	stats = Stats{}
@@ -44,34 +56,20 @@ func Main() {
 		stats.initializeTimingsBucket(ui.lbc.buckets)
 	}
 
-	quit := make(chan struct{}, 1)
-
 	ticker := NewTicker(config.Rate)
 
 	rampUpController := NewRamUpController(config.RampUp, config.Rate)
 	go rampUpController.startRampUpTimeProcess(ticker.GetRateChanger())
 
 	// start attackers
-	var onTickChan = ticker.Start(quit)
-	trgt.Start(config.Workers, onTickChan, quit)
+	var onTickChan = ticker.Start()
+	defer ticker.Stop()
 
-	// start reporter
-	trgt.wg.Add(1)
-	go func() {
-		defer trgt.wg.Done()
-		if !config.Verbose {
-			ui.reporter(quit)
-		}
-	}()
+	trgt.Start(config.Workers, onTickChan)
 
 	// blocking
-	if config.Verbose {
-		<-make(chan bool) // just wait for Ctrl-C
-	} else {
-		keyPressListener(rampUpController.GetRateChanger())
+	if !config.Verbose {
+		ui.Show() // start Terminal output
 	}
-
-	// bye
-	close(quit)
-	trgt.Wait()
+	keyPressListener(rampUpController.GetRateChanger())
 }

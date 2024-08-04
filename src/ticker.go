@@ -9,12 +9,14 @@ type Ticker struct {
 	multiplier      int64
 	tickDuration    time.Duration
 	rateChangerChan chan float64
+	done            chan bool
 }
 
 // NewTicker creates a new ticker instance with a given rate and ramp-up time.
 func NewTicker(rate float64) *Ticker {
 	t := &Ticker{
 		rateChangerChan: make(chan float64),
+		done:            make(chan bool),
 	}
 	t.setTickDuration(rate)
 	return t
@@ -39,7 +41,7 @@ func (t *Ticker) GetRateChanger() chan float64 {
 }
 
 // Start initializes the tick process and returns a channel to receive tick events.
-func (t *Ticker) Start(quit <-chan struct{}) <-chan time.Time {
+func (t *Ticker) Start() <-chan time.Time {
 	ticker := make(chan time.Time)
 
 	// start main workers
@@ -63,10 +65,15 @@ func (t *Ticker) Start(quit <-chan struct{}) <-chan time.Time {
 					ticker <- onTick
 				}
 
-			case <-quit:
+			case <-t.done:
+				close(ticker) // give signal to stop to the outside world
 				return
 			}
 		}
 	}()
 	return ticker
+}
+
+func (t *Ticker) Stop() {
+	t.done <- true
 }

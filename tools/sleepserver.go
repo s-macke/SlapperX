@@ -20,7 +20,7 @@ func SleepServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	port := flag.String("port", "5000", "port to serve on")
+	port := flag.String("port", "6000", "port to serve on")
 	defaultSleepTimeMs = flag.Int("sleep", 1000, "default sleep time")
 	defaultStatusCode = flag.Int("status", 200, "default status code")
 	flag.Parse()

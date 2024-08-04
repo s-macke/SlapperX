@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,9 @@ type UI struct {
 	plotWidth  int
 	plotHeight int
 
+	wg   sync.WaitGroup
+	done chan bool
+
 	lbc *logBucketCalculator
 }
 
@@ -47,14 +51,16 @@ func InitTerminal(minY time.Duration, maxY time.Duration) *UI {
 	}
 	ui := UI{
 		start: time.Now(),
+		done:  make(chan bool),
 	}
 	ui.setWindowSize()
 	ui.lbc = newLogBucketCalculator(minY, maxY, ui.plotHeight)
 	return &ui
 }
 
-func (ui *UI) close() {
-	//term.Close()
+func (ui *UI) Close() {
+	ui.done <- true
+	ui.wg.Wait()
 }
 
 func (ui *UI) setWindowSize() {
@@ -89,13 +95,10 @@ func (ui *UI) listParameters() {
 
 // printHistogramHeader prints the header of the histogram with sent, in-flight, and responses information
 func (ui *UI) printHistogramHeader(sb *strings.Builder, currentRate counter, currentSetRate float64) {
-	sent := stats.requestsSent.Load()
-	recv := stats.responsesReceived.Load()
-
 	_, _ = fmt.Fprintf(sb, "time: %4ds ", int(time.Since(ui.start).Seconds()))
-	_, _ = fmt.Fprintf(sb, "sent: %-5d ", sent)
+	_, _ = fmt.Fprintf(sb, "sent: %-5d ", stats.requestsSent.Load())
 	//_, _ = fmt.Fprintf(sb, "connections: %-5d ", trgt.client.CurrentConnections)
-	_, _ = fmt.Fprintf(sb, "in-flight: %-4d ", sent-recv)
+	_, _ = fmt.Fprintf(sb, "in-flight: %-4d ", stats.getInFlightRequests())
 	setRateI, setRatef := math.Modf(currentSetRate)
 	if setRatef < 1e-2 {
 		_, _ = fmt.Fprintf(sb, "\033[96mrate: %4d/%d RPS\033[0m ", currentRate.Load(), int(setRateI))
@@ -177,8 +180,8 @@ func (ui *UI) clearScreen() {
 	}
 }
 
-// reporter periodically updates and redraws the histogram
-func (ui *UI) reporter(quit <-chan struct{}) {
+// show periodically updates and redraws the histogram
+func (ui *UI) Show() {
 	ui.clearScreen()
 
 	var currentRate counter
@@ -192,13 +195,17 @@ func (ui *UI) reporter(quit <-chan struct{}) {
 	}()
 
 	ticker := time.Tick(screenRefreshInterval)
-	for {
-		select {
-		case <-ticker:
-			//trgt.client.String()
-			ui.drawHistogram(currentRate, stats.currentSetRate)
-		case <-quit:
-			return
+	go func() {
+		ui.wg.Add(1)
+		for {
+			select {
+			case <-ticker:
+				//trgt.client.String()
+				ui.drawHistogram(currentRate, stats.currentSetRate)
+			case <-ui.done:
+				ui.wg.Done()
+				return
+			}
 		}
-	}
+	}()
 }
