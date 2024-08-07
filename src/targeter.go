@@ -55,22 +55,27 @@ type AttackResponse struct {
 	err    error
 	start  time.Time
 	end    time.Time
+	body   []byte
 }
 
-func (trgt *Targeter) DoRequest(client *tracing.Client, request *http.Request) AttackResponse {
+func (trgt *Targeter) DoRequest(request *http.Request, doStoreBody bool) AttackResponse {
 	attackResponse := AttackResponse{
 		status: 0,
 		err:    nil,
 	}
 	attackResponse.start = time.Now()
 
-	response, err := client.Do(request)
+	response, err := trgt.client.Do(request)
 	if err != nil && trgt.verbose {
 		fmt.Println("Error:", request.Method, request.URL, err)
 	}
 	if err == nil {
 		attackResponse.status = response.StatusCode
-		_, err = io.ReadAll(response.Body)
+		if doStoreBody {
+			attackResponse.body, err = io.ReadAll(response.Body)
+		} else {
+			_, err = io.ReadAll(response.Body)
+		}
 		if err != nil && trgt.verbose {
 			fmt.Println("Error:", request.Method, request.URL, err)
 		}
@@ -136,7 +141,7 @@ func FillStats(request *http.Request, response AttackResponse,
 	}
 }
 
-func (trgt *Targeter) attack(client *tracing.Client, ch <-chan time.Time) {
+func (trgt *Targeter) attack(ch <-chan time.Time) {
 	for {
 		_, ok := <-ch
 		if !ok { // channel closed
@@ -149,7 +154,7 @@ func (trgt *Targeter) attack(client *tracing.Client, ch <-chan time.Time) {
 		currentSetRate := stats.currentSetRate
 		currentInFlightRequests := stats.getInFlightRequests()
 
-		response := trgt.DoRequest(client, request)
+		response := trgt.DoRequest(request, false)
 		FillStats(request, response, currentSetRate, currentInFlightRequests)
 	}
 }
@@ -161,7 +166,7 @@ func (trgt *Targeter) Start(workers uint, ticker <-chan time.Time) {
 		trgt.wg.Add(1)
 		go func() {
 			defer trgt.wg.Done()
-			trgt.attack(trgt.client, ticker)
+			trgt.attack(ticker)
 		}()
 	}
 }
