@@ -61,6 +61,10 @@ func (trgt *Targeter) attack(client *tracing.Client, ch <-chan time.Time) {
 		request := trgt.nextRequest()
 		stats.requestsSent.Add(1)
 
+		// Save the rate when the request started
+		currentSetRate := stats.currentSetRate
+		currentInFlightRequests := stats.getInFlightRequests()
+
 		start := time.Now()
 		response, err := client.Do(request)
 		if err != nil && trgt.verbose {
@@ -110,8 +114,8 @@ func (trgt *Targeter) attack(client *tracing.Client, ch <-chan time.Time) {
 					start.Sub(trgt.attackStartTime).Milliseconds(),
 					elapsed.Milliseconds(),
 					status,
-					stats.getInFlightRequests(),
-					stats.currentSetRate))
+					currentInFlightRequests,
+					currentSetRate))
 		}
 
 		if trgt.verbose {
