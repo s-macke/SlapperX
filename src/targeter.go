@@ -18,14 +18,21 @@ type Targeter struct {
 	wg       sync.WaitGroup
 	idx      counter
 	requests []http.Request
-	logFile  *LogFile
+
+	logFile *LogFile
+	result  chan ResultStruct
 
 	attackStartTime time.Time // time when the attack started
 
 	verbose bool
 }
 
-func NewTargeter(requests *[]http.Request, timeout time.Duration, logFile *LogFile, verbose bool) *Targeter {
+func NewTargeter(
+	requests *[]http.Request,
+	timeout time.Duration,
+	logFile *LogFile,
+	verbose bool,
+	resultStruct chan ResultStruct) *Targeter {
 	client := tracing.NewTracingClient(timeout)
 
 	trgt := &Targeter{
@@ -34,6 +41,7 @@ func NewTargeter(requests *[]http.Request, timeout time.Duration, logFile *LogFi
 		requests: *requests,
 		logFile:  logFile,
 		verbose:  verbose,
+		result:   resultStruct,
 	}
 
 	return trgt
@@ -86,7 +94,7 @@ func (trgt *Targeter) DoRequest(request *http.Request, doStoreBody bool) AttackR
 	return attackResponse
 }
 
-func FillStats(request *http.Request, response AttackResponse,
+func (trgt *Targeter) FillStats(request *http.Request, response AttackResponse,
 	currentSetRate float64, currentInFlightRequests int64) {
 	var dnsError *net.DNSError
 	stats.responsesReceived.Add(1)
@@ -112,7 +120,7 @@ func FillStats(request *http.Request, response AttackResponse,
 	}
 
 	elapsed := response.end.Sub(response.start)
-	elapsedMs := float64(elapsed) / float64(time.Millisecond)
+	elapsedMs := elapsed.Milliseconds()
 	// to test the latency distribution
 	// elapsedMs = (math.Sin(elapsedMs)+1.1)*30. + math.Cos(float64(start.UnixMilli()/5000))*100 + 100.
 
@@ -131,13 +139,12 @@ func FillStats(request *http.Request, response AttackResponse,
 		fmt.Println(request.Method, request.URL, response.status, elapsedMs)
 		return
 	}
-
-	elapsedBucket := ui.lbc.calculateBucket(elapsedMs)
-	timings := stats.timings.getTimingsSlot(response.end) // end is basically now
-	if response.status >= 200 && response.status < 300 {
-		timings[elapsedBucket].Ok.Add(1)
-	} else {
-		timings[elapsedBucket].Bad.Add(1)
+	if trgt.result != nil {
+		trgt.result <- ResultStruct{
+			elapsedMs: elapsedMs,
+			status:    response.status,
+			end:       response.end,
+		}
 	}
 }
 
@@ -155,7 +162,7 @@ func (trgt *Targeter) attack(ch <-chan time.Time) {
 		currentInFlightRequests := stats.getInFlightRequests()
 
 		response := trgt.DoRequest(request, false)
-		FillStats(request, response, currentSetRate, currentInFlightRequests)
+		trgt.FillStats(request, response, currentSetRate, currentInFlightRequests)
 	}
 }
 

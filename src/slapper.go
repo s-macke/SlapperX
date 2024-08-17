@@ -39,22 +39,22 @@ func Main() {
 		defer logFile.Close()
 	}
 
-	trgt = NewTargeter(&requests, config.Timeout, logFile, config.Verbose)
+	stats = Stats{}
+
+	var resultChan chan ResultStruct = nil
+	if !config.Verbose {
+		ui = InitTerminal(config.MinY, config.MaxY)
+		defer ui.Close()
+		stats.initializeTimingsBucket(ui.lbc.buckets)
+		resultChan = stats.timings.Listen()
+	}
+
+	trgt = NewTargeter(&requests, config.Timeout, logFile, config.Verbose, resultChan)
 
 	defer func() {
 		close(quit)  // send all threads the quit signal
 		trgt.Close() // wait and Close
 	}()
-
-	if !config.Verbose {
-		ui = InitTerminal(config.MinY, config.MaxY)
-		defer ui.Close()
-	}
-
-	stats = Stats{}
-	if !config.Verbose {
-		stats.initializeTimingsBucket(ui.lbc.buckets)
-	}
 
 	ticker := NewTicker(config.Rate)
 

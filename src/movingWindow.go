@@ -3,8 +3,8 @@ package slapperx
 import "time"
 
 type OkBadCounter struct {
-	Ok  counter
-	Bad counter
+	Ok  int
+	Bad int
 }
 
 type windowState int
@@ -20,16 +20,16 @@ type MovingWindow struct {
 	state    []windowState
 	nwindows int
 	nbuckets int
-	tOk      []int64
-	tBad     []int64
+	tOk      []int
+	tBad     []int
 }
 
-func newMovingWindow(nwindows int, nbuckets int) *MovingWindow {
+func NewMovingWindow(nwindows int, nbuckets int) *MovingWindow {
 	mw := &MovingWindow{
 		nwindows: nwindows,
 		nbuckets: nbuckets,
-		tOk:      make([]int64, nbuckets),
-		tBad:     make([]int64, nbuckets),
+		tOk:      make([]int, nbuckets),
+		tBad:     make([]int, nbuckets),
 	}
 	mw.state = make([]windowState, nwindows)
 
@@ -41,7 +41,34 @@ func newMovingWindow(nwindows int, nbuckets int) *MovingWindow {
 	return mw
 }
 
-func (mw *MovingWindow) getTimingsSlot(now time.Time) []OkBadCounter {
+type ResultStruct struct {
+	elapsedMs int64
+	status    int
+	end       time.Time
+}
+
+func (mw *MovingWindow) Listen() chan ResultStruct {
+	var resultChan = make(chan ResultStruct, 1000)
+
+	go func() {
+		for {
+			select {
+			case result := <-resultChan:
+				elapsedBucket := ui.lbc.calculateBucket(float64(result.elapsedMs))
+				slot := mw.getTimingsSlot(result.end) // end is basically now
+				if result.status >= 200 && result.status < 300 {
+					mw.counts[slot][elapsedBucket].Ok++
+				} else {
+					mw.counts[slot][elapsedBucket].Bad++
+				}
+
+			}
+		}
+	}()
+	return resultChan
+}
+
+func (mw *MovingWindow) getTimingsSlot(now time.Time) int {
 	n := int(now.UnixNano() / screenRefreshInterval.Nanoseconds())
 	slot := n % len(mw.counts)
 	if mw.state[slot] == Filled {
@@ -49,7 +76,7 @@ func (mw *MovingWindow) getTimingsSlot(now time.Time) []OkBadCounter {
 		mw.state[oldSlot] = Filled
 		mw.ResetSlot(slot)
 	}
-	return mw.counts[slot]
+	return slot
 }
 
 func (mw *MovingWindow) Reset() {
@@ -58,8 +85,8 @@ func (mw *MovingWindow) Reset() {
 	}
 	for _, e := range mw.counts {
 		for j := 0; j < len(e); j++ {
-			e[j].Ok.Store(0)
-			e[j].Bad.Store(0)
+			e[j].Ok = 0
+			e[j].Bad = 0
 		}
 	}
 }
@@ -67,27 +94,27 @@ func (mw *MovingWindow) Reset() {
 func (mw *MovingWindow) ResetSlot(slot int) {
 	buckets := mw.counts[slot]
 	for i := 0; i < len(buckets); i++ {
-		buckets[i].Ok.Store(0)
-		buckets[i].Bad.Store(0)
+		buckets[i].Ok = 0
+		buckets[i].Bad = 0
 	}
 	mw.state[slot] = Ready
 }
 
 // prepareHistogramData prepares data for histogram by aggregating OK and Bad requests
-func (mw *MovingWindow) prepareHistogramData() ([]int64, []int64, int64) {
+func (mw *MovingWindow) prepareHistogramData() ([]int, []int, int) {
 	for j := range mw.nbuckets {
 		mw.tOk[j] = 0
 		mw.tBad[j] = 0
 	}
 
-	maximum := int64(1)
+	maximum := 1
 
 	for i := 0; i < mw.nwindows; i++ {
 		okBad := mw.counts[i]
 
 		for j := 0; j < mw.nbuckets; j++ {
-			mw.tOk[j] += okBad[j].Ok.Load()
-			mw.tBad[j] += okBad[j].Bad.Load()
+			mw.tOk[j] += okBad[j].Ok
+			mw.tBad[j] += okBad[j].Bad
 			if sum := mw.tOk[j] + mw.tBad[j]; sum > maximum {
 				maximum = sum
 			}
