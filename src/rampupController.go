@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// RampUpController constants
+const (
+	rateIncreaseStep = 10
+	rateDecreaseStep = -10
+)
+
 type RampUpController struct {
 	startTime       time.Time
 	rampUpTime      time.Duration
@@ -29,7 +35,6 @@ func (r *RampUpController) rateChangeListener() {
 		case rateChange := <-r.rateChangerChan:
 			r.maxRate += rateChange
 			r.maxRate = math.Max(0.0001, r.maxRate)
-
 		}
 	}
 }
@@ -54,7 +59,31 @@ func (r *RampUpController) startRampUpTimeProcess(rateChangerChan chan float64) 
 	}
 }
 
+// ChangeRate allows direct modification of the rate by a delta amount
+func (r *RampUpController) ChangeRate(delta float64) {
+	r.rateChangerChan <- delta
+}
+
+// IncreaseRate increases the rate by the standard step
+func (r *RampUpController) IncreaseRate() {
+	r.ChangeRate(rateIncreaseStep)
+}
+
+// DecreaseRate decreases the rate by the standard step
+func (r *RampUpController) DecreaseRate() {
+	r.ChangeRate(rateDecreaseStep)
+}
+
+// SetRate sets the rate to an absolute value (implemented as a delta from current)
+func (r *RampUpController) SetRate(newRate float64) {
+	// Calculate the delta needed to reach newRate
+	// This needs to be sent through the channel to ensure thread safety
+	delta := newRate - r.maxRate
+	r.ChangeRate(delta)
+}
+
 // GetRateChanger returns a channel for changing the ticker's rate during operation.
+// This is kept for compatibility but new code should use the ChangeRate/SetRate methods.
 func (r *RampUpController) GetRateChanger() chan float64 {
 	return r.rateChangerChan
 }

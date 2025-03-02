@@ -10,9 +10,6 @@ const (
 	movingWindowsSize      = 10 // seconds
 	screenRefreshFrequency = 5  // per second
 	screenRefreshInterval  = time.Second / screenRefreshFrequency
-
-	rateIncreaseStep = 10
-	rateDecreaseStep = -10
 )
 
 var (
@@ -71,5 +68,8 @@ func Main() {
 	if !config.Verbose {
 		ui.Show() // start Terminal output
 	}
-	keyPressListener(rampUpController.GetRateChanger())
+
+	// Create and start keyboard handler
+	keyboard := InitKeyboard(rampUpController)
+	keyboard.Start()
 }
