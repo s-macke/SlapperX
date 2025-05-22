@@ -2,7 +2,7 @@ package httpfile
 
 import (
 	"encoding/base64"
-	"log"
+	"errors"
 	"net/http"
 	"regexp"
 	"strings"
@@ -37,10 +37,10 @@ func AuthToBase64(header HTTPHeader) HTTPHeader {
 	return header
 }
 
-func PrepareRequest(r HTTPFile, addKeepAlive bool) *http.Request {
+func PrepareRequest(r HTTPFile, addKeepAlive bool) (*http.Request, error) {
 	req, err := http.NewRequest(r.Method, r.URL, strings.NewReader(r.Body))
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.New("failed to create HTTP request: " + err.Error())
 	}
 	q := req.URL.Query()
 	for _, p := range r.Parameter {
@@ -62,7 +62,7 @@ func PrepareRequest(r HTTPFile, addKeepAlive bool) *http.Request {
 	   bytes2, err := httputil.DumpRequest(req, true)
 	   fmt.Println(string(bytes2))
 	*/
-	return req
+	return req, nil
 }
 
 /*

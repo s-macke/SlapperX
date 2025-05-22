@@ -3,7 +3,7 @@ package httpfile
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -249,7 +249,7 @@ func fillParameters(request *HTTPFile) {
 	}
 }
 
-func (p *Parser) parse(addKeepAlive bool) {
+func (p *Parser) parse(addKeepAlive bool) error {
 	part := PREMETHOD
 
 	for _, line := range strings.Split(strings.ReplaceAll(p.content, "\r\n", "\n"), "\n") {
@@ -258,7 +258,11 @@ func (p *Parser) parse(addKeepAlive bool) {
 		newpart := p.parsePart(part, line)
 		if part != PREMETHOD && newpart == PREMETHOD {
 			fillParameters(&p.req)
-			p.reqs = append(p.reqs, *PrepareRequest(p.req, addKeepAlive))
+			req, err := PrepareRequest(p.req, addKeepAlive)
+			if err != nil {
+				return err
+			}
+			p.reqs = append(p.reqs, *req)
 			p.req = NewHTTPFile()
 		}
 		if newpart != part {
@@ -269,32 +273,40 @@ func (p *Parser) parse(addKeepAlive bool) {
 	}
 	if len(p.req.Method) != 0 {
 		fillParameters(&p.req)
-		p.reqs = append(p.reqs, *PrepareRequest(p.req, addKeepAlive))
+		req, err := PrepareRequest(p.req, addKeepAlive)
+		if err != nil {
+			return err
+		}
+		p.reqs = append(p.reqs, *req)
 		p.req = NewHTTPFile()
 	}
+	return nil
 }
 
-func HTTPFileParser(path string, overridesPath string, addKeepAlive bool) []http.Request {
+func HTTPFileParser(path string, overridesPath string, addKeepAlive bool) ([]http.Request, error) {
 	httpFile, err := template.ParseGlob(path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.New("failed to parse HTTP template file: " + err.Error())
 	}
 	var overrides any = nil
 	overridesFile, err := os.ReadFile(overridesPath)
 	if err == nil {
 		err := json.Unmarshal(overridesFile, &overrides)
 		if err != nil {
-			log.Fatal(err)
+			return nil, errors.New("failed to unmarshal JSON overrides: " + err.Error())
 		}
 	}
 	var buff bytes.Buffer
 	err = httpFile.Execute(&buff, overrides)
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.New("failed to execute template: " + err.Error())
 	}
 
 	p := newParser(buff.String())
-	p.parse(addKeepAlive)
+	err = p.parse(addKeepAlive)
+	if err != nil {
+		return nil, errors.New("failed to parse HTTP content: " + err.Error())
+	}
 
-	return p.reqs
+	return p.reqs, nil
 }
