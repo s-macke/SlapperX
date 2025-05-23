@@ -10,6 +10,18 @@ import (
 	"text/template"
 )
 
+var HTTPMethods = map[string]bool{
+	"GET":     true,
+	"HEAD":    true,
+	"POST":    true,
+	"PUT":     true,
+	"DELETE":  true,
+	"CONNECT": true,
+	"OPTIONS": true,
+	"TRACE":   true,
+	"PATCH":   true,
+}
+
 const (
 	PREMETHOD        = iota
 	METHOD           = iota
@@ -54,6 +66,19 @@ func trimLeftChars(s string, n int) string {
 	return s[:0]
 }
 
+// Prüft, ob eine Zeile mit einer gültigen HTTP-Methode oder URL beginnt
+func isValidMethodLine(line string) bool {
+	if strings.HasPrefix(line, "http://") || strings.HasPrefix(line, "https://") {
+		return true
+	}
+	for method := range HTTPMethods {
+		if strings.HasPrefix(line, method+" ") || strings.HasPrefix(line, method+"\t") {
+			return true
+		}
+	}
+	return false
+}
+
 // Everything before GET and POST Statements
 func (p *Parser) parsePre(line string) int {
 	//fmt.Println("Pre:" + line)
@@ -90,19 +115,7 @@ func (p *Parser) parsePre(line string) int {
 		return PREMETHOD
 	}
 
-	if strings.HasPrefix(line, "http://") {
-		return METHOD
-	}
-	if strings.HasPrefix(line, "https://") {
-		return METHOD
-	}
-	if strings.HasPrefix(line, "GET") {
-		return METHOD
-	}
-	if strings.HasPrefix(line, "POST") {
-		return METHOD
-	}
-	if strings.HasPrefix(line, "OPTIONS") {
+	if isValidMethodLine(line) {
 		return METHOD
 	}
 
@@ -116,29 +129,27 @@ func (p *Parser) parseMethod(line string) int {
 	if strings.HasPrefix(line, "###") {
 		return PREMETHOD
 	}
-	if !strings.HasPrefix(line, "http://") && !strings.HasPrefix(line, "https://") && !strings.HasPrefix(line, "GET") && !strings.HasPrefix(line, "POST") && !strings.HasPrefix(line, "OPTIONS") && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+
+	if !isValidMethodLine(line) {
 		return HEADER
 	}
 
 	if strings.HasPrefix(line, "http") {
 		p.req.Method = "GET"
-	}
-	if strings.HasPrefix(line, "GET ") {
-		p.req.Method = "GET"
-		line = trimLeftChars(line, 4)
-	}
-	if strings.HasPrefix(line, "OPTIONS ") {
-		p.req.Method = "OPTIONS"
-		line = trimLeftChars(line, 8)
-	}
-	if strings.HasPrefix(line, "POST") {
-		p.req.Method = "POST"
-		line = trimLeftChars(line, 5)
-		/*
-			if !strings.HasPrefix(line, "http") {
-				line = "http://" + line
+	} else {
+		for method := range HTTPMethods {
+			methodWithSpace := method + " "
+			methodWithTab := method + "\t"
+			if strings.HasPrefix(line, methodWithSpace) {
+				p.req.Method = method
+				line = trimLeftChars(line, len(methodWithSpace))
+				break
+			} else if strings.HasPrefix(line, methodWithTab) {
+				p.req.Method = method
+				line = trimLeftChars(line, len(methodWithTab))
+				break
 			}
-		*/
+		}
 	}
 	p.req.URL += strings.TrimSpace(line)
 
