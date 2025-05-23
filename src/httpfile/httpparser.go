@@ -22,12 +22,15 @@ var HTTPMethods = map[string]bool{
 	"PATCH":   true,
 }
 
+// parserState represents the current state of the parser
+type parserState int
+
 const (
-	PREMETHOD        = iota
-	METHOD           = iota
-	HEADER           = iota
-	BODY             = iota
-	RESPONSEFUNCTION = iota
+	StatePreMethod        parserState = iota
+	StateMethod           parserState = iota
+	StateHeader           parserState = iota
+	StateBody             parserState = iota
+	StateResponseFunction parserState = iota
 )
 
 type Parser struct {
@@ -80,12 +83,12 @@ func isValidMethodLine(line string) bool {
 }
 
 // Everything before GET and POST Statements
-func (p *Parser) parsePre(line string) int {
+func (p *Parser) parsePre(line string) parserState {
 	//fmt.Println("Pre:" + line)
 
 	if strings.HasPrefix(line, "// @Name ") {
 		p.req.Name = strings.TrimSpace(line[8:])
-		return PREMETHOD
+		return StatePreMethod
 	}
 
 	if strings.HasPrefix(line, "// @Tags ") {
@@ -93,45 +96,45 @@ func (p *Parser) parsePre(line string) int {
 		for idx := range p.req.Tags {
 			p.req.Tags[idx] = strings.TrimSpace(p.req.Tags[idx])
 		}
-		return PREMETHOD
+		return StatePreMethod
 	}
 
 	// this might from pevious request
 	if strings.HasPrefix(strings.TrimSpace(line), "###") {
-		return PREMETHOD
+		return StatePreMethod
 	}
 
 	if strings.HasPrefix(strings.TrimSpace(line), "#") {
 		p.req.Comments = append(p.req.Comments, strings.TrimSpace(line))
-		return PREMETHOD
+		return StatePreMethod
 	}
 	if strings.HasPrefix(strings.TrimSpace(line), "//") {
 		p.req.Comments = append(p.req.Comments, strings.TrimSpace(line))
-		return PREMETHOD
+		return StatePreMethod
 	}
 
 	line = removeComment(line)
 	if len(line) == 0 {
-		return PREMETHOD
+		return StatePreMethod
 	}
 
 	if isValidMethodLine(line) {
-		return METHOD
+		return StateMethod
 	}
 
-	return PREMETHOD
+	return StatePreMethod
 }
 
 // The Full GET or POST Statement
-func (p *Parser) parseMethod(line string) int {
+func (p *Parser) parseMethod(line string) parserState {
 	//fmt.Println("Method:" + line)
 
 	if strings.HasPrefix(line, "###") {
-		return PREMETHOD
+		return StatePreMethod
 	}
 
 	if !isValidMethodLine(line) {
-		return HEADER
+		return StateHeader
 	}
 
 	if strings.HasPrefix(line, "http") {
@@ -153,28 +156,28 @@ func (p *Parser) parseMethod(line string) int {
 	}
 	p.req.URL += strings.TrimSpace(line)
 
-	return METHOD
+	return StateMethod
 }
 
 // The Headers after the GET or POST Statement
-func (p *Parser) parseHeader(line string) int {
+func (p *Parser) parseHeader(line string) parserState {
 	//fmt.Println("Header:" + line)
 	if strings.HasPrefix(line, "###") {
-		return PREMETHOD
+		return StatePreMethod
 	}
 
 	if len(strings.TrimSpace(line)) == 0 {
-		return BODY
+		return StateBody
 	}
 
 	line = removeComment(line)
 	if len(line) == 0 {
-		return HEADER
+		return StateHeader
 	}
 
 	kv := strings.Split(line, ":")
 	if len(kv) != 2 {
-		return HEADER
+		return StateHeader
 	}
 	h := HTTPHeader{
 		Key:   strings.TrimSpace(kv[0]),
@@ -182,55 +185,55 @@ func (p *Parser) parseHeader(line string) int {
 	}
 	p.req.Header = append(p.req.Header, h)
 
-	return HEADER
+	return StateHeader
 }
 
-func (p *Parser) parseBody(line string) int {
+func (p *Parser) parseBody(line string) parserState {
 	//fmt.Println("Body:" + line)
 
 	if strings.HasPrefix(line, "###") {
-		return PREMETHOD
+		return StatePreMethod
 	}
 	if strings.HasPrefix(line, "> {%") {
-		return RESPONSEFUNCTION
+		return StateResponseFunction
 	}
 	if len(strings.TrimSpace(line)) == 0 {
-		return BODY
+		return StateBody
 	}
 
 	p.req.Body += line + "\n"
 
-	return BODY
+	return StateBody
 }
 
-func (p *Parser) parseResponseFunction(line string) int {
+func (p *Parser) parseResponseFunction(line string) parserState {
 	//fmt.Println("Responsefunction:" + line)
 
 	if strings.HasPrefix(line, "###") {
-		return PREMETHOD
+		return StatePreMethod
 	}
 	if len(strings.TrimSpace(line)) == 0 {
-		return BODY
+		return StateBody
 	}
 	p.req.ResponseFunction += line + "\n"
 
-	return RESPONSEFUNCTION
+	return StateResponseFunction
 }
 
-func (p *Parser) parsePart(part int, line string) int {
+func (p *Parser) parsePart(part parserState, line string) parserState {
 	switch part {
-	case PREMETHOD:
+	case StatePreMethod:
 		return p.parsePre(line)
-	case METHOD:
+	case StateMethod:
 		return p.parseMethod(line)
-	case HEADER:
+	case StateHeader:
 		return p.parseHeader(line)
-	case BODY:
+	case StateBody:
 		return p.parseBody(line)
-	case RESPONSEFUNCTION:
+	case StateResponseFunction:
 		return p.parseResponseFunction(line)
 	default:
-		return PREMETHOD
+		return StatePreMethod
 	}
 }
 
@@ -261,13 +264,13 @@ func fillParameters(request *HTTPFile) {
 }
 
 func (p *Parser) parse(addKeepAlive bool) error {
-	part := PREMETHOD
+	part := StatePreMethod
 
 	for _, line := range strings.Split(strings.ReplaceAll(p.content, "\r\n", "\n"), "\n") {
 		//fmt.Println(scanner.Text())
 
 		newpart := p.parsePart(part, line)
-		if part != PREMETHOD && newpart == PREMETHOD {
+		if part != StatePreMethod && newpart == StatePreMethod {
 			fillParameters(&p.req)
 			req, err := PrepareRequest(p.req, addKeepAlive)
 			if err != nil {
