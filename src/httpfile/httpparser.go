@@ -54,7 +54,7 @@ func removeComment(line string) string {
 		return ""
 	}
 	s := strings.Split(line, " #")[0]
-	s = strings.Split(line, " //")[0]
+	s = strings.Split(s, " //")[0]
 	return s
 }
 
