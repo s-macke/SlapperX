@@ -44,6 +44,10 @@ go test ./src/...
 4. UI aggregates data every 200ms for histogram display
 5. Keyboard input drives rate changes via RampUpController
 
+**Tests:**
+- Unit tests always test all code paths, including error handling
+- test http requests must be defined in a testdata directory
+
 **HTTP Processing:**
 - Custom HTTP client with connection tracking (`tracing/tracingClient.go`)
 - Request parsing from .http files (`httpfile/` package)
