@@ -3,8 +3,8 @@ package httpfile
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"text/template"
@@ -82,6 +82,28 @@ func isValidMethodLine(line string) bool {
 	return false
 }
 
+// validateURL checks if the URL is valid
+func validateURL(rawURL string) error {
+	if rawURL == "" {
+		return NewParseError(ErrMissingURL, "URL cannot be empty", "")
+	}
+
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return NewParseErrorWithCause(ErrInvalidURL, "invalid URL format", "", err)
+	}
+
+	if parsedURL.Scheme == "" {
+		return NewParseError(ErrInvalidURL, "URL must have a scheme (http:// or https://)", rawURL)
+	}
+
+	if parsedURL.Host == "" {
+		return NewParseError(ErrInvalidURL, "URL must have a host", rawURL)
+	}
+
+	return nil
+}
+
 // Everything before GET and POST Statements
 func (p *Parser) parsePre(line string) (parserState, error) {
 	//fmt.Println("Pre:" + line)
@@ -125,7 +147,7 @@ func (p *Parser) parsePre(line string) (parserState, error) {
 	// If we have non-empty, non-comment content that's not a valid method line,
 	// it's likely malformed content
 	if len(strings.TrimSpace(line)) > 0 {
-		return StatePreMethod, errors.New("unexpected content: line does not match expected format")
+		return StatePreMethod, NewParseError(ErrUnexpectedContent, "line does not match expected format", line)
 	}
 
 	return StatePreMethod, nil
@@ -164,7 +186,7 @@ func (p *Parser) parseMethod(line string) (parserState, error) {
 	// Validate that URL exists after method
 	url := strings.TrimSpace(line)
 	if len(url) == 0 {
-		return StateMethod, errors.New("HTTP method must be followed by a URL")
+		return StateMethod, NewParseError(ErrMissingURL, "HTTP method must be followed by a URL", line)
 	}
 
 	p.req.URL += url
@@ -190,7 +212,7 @@ func (p *Parser) parseHeader(line string) (parserState, error) {
 
 	kv := strings.Split(line, ":")
 	if len(kv) != 2 {
-		return StateHeader, errors.New("invalid header format: headers must contain a colon separator")
+		return StateHeader, NewParseError(ErrInvalidHeader, "headers must contain a colon separator", line)
 	}
 	h := HTTPHeader{
 		Key:   strings.TrimSpace(kv[0]),
@@ -289,10 +311,13 @@ func (p *Parser) parse(addKeepAlive bool) error {
 		if part != StatePreMethod && newpart == StatePreMethod {
 			// Validate the request before adding it
 			if len(p.req.Method) == 0 {
-				return errors.New("incomplete request: no HTTP method found")
+				return NewParseError(ErrMissingMethod, "no HTTP method found", "")
 			}
 			if len(p.req.URL) == 0 {
-				return errors.New("incomplete request: no URL found")
+				return NewParseError(ErrIncompleteRequest, "no URL found", "")
+			}
+			if err := validateURL(p.req.URL); err != nil {
+				return err
 			}
 			fillParameters(&p.req)
 			req, err := PrepareRequest(p.req, addKeepAlive)
@@ -312,6 +337,9 @@ func (p *Parser) parse(addKeepAlive bool) error {
 		part = newpart
 	}
 	if len(p.req.Method) != 0 {
+		if err := validateURL(p.req.URL); err != nil {
+			return err
+		}
 		fillParameters(&p.req)
 		req, err := PrepareRequest(p.req, addKeepAlive)
 		if err != nil {
@@ -326,26 +354,26 @@ func (p *Parser) parse(addKeepAlive bool) error {
 func HTTPFileParser(path string, overridesPath string, addKeepAlive bool) ([]http.Request, error) {
 	httpFile, err := template.ParseGlob(path)
 	if err != nil {
-		return nil, errors.New("failed to parse HTTP template file: " + err.Error())
+		return nil, NewParseErrorWithCause(ErrTemplateError, "failed to parse HTTP template file", "", err)
 	}
 	var overrides any = nil
 	overridesFile, err := os.ReadFile(overridesPath)
 	if err == nil {
 		err := json.Unmarshal(overridesFile, &overrides)
 		if err != nil {
-			return nil, errors.New("failed to unmarshal JSON overrides: " + err.Error())
+			return nil, NewParseErrorWithCause(ErrJSONError, "failed to unmarshal JSON overrides", "", err)
 		}
 	}
 	var buff bytes.Buffer
 	err = httpFile.Execute(&buff, overrides)
 	if err != nil {
-		return nil, errors.New("failed to execute template: " + err.Error())
+		return nil, NewParseErrorWithCause(ErrTemplateError, "failed to execute template", "", err)
 	}
 
 	p := newParser(buff.String())
 	err = p.parse(addKeepAlive)
 	if err != nil {
-		return nil, errors.New("failed to parse HTTP content: " + err.Error())
+		return nil, NewParseErrorWithCause(ErrIncompleteRequest, "failed to parse HTTP content", "", err)
 	}
 
 	return p.reqs, nil
