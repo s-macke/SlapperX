@@ -83,12 +83,12 @@ func isValidMethodLine(line string) bool {
 }
 
 // Everything before GET and POST Statements
-func (p *Parser) parsePre(line string) parserState {
+func (p *Parser) parsePre(line string) (parserState, error) {
 	//fmt.Println("Pre:" + line)
 
 	if strings.HasPrefix(line, "// @Name ") {
 		p.req.Name = strings.TrimSpace(line[8:])
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 
 	if strings.HasPrefix(line, "// @Tags ") {
@@ -96,45 +96,51 @@ func (p *Parser) parsePre(line string) parserState {
 		for idx := range p.req.Tags {
 			p.req.Tags[idx] = strings.TrimSpace(p.req.Tags[idx])
 		}
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 
 	// this might from pevious request
 	if strings.HasPrefix(strings.TrimSpace(line), "###") {
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 
 	if strings.HasPrefix(strings.TrimSpace(line), "#") {
 		p.req.Comments = append(p.req.Comments, strings.TrimSpace(line))
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 	if strings.HasPrefix(strings.TrimSpace(line), "//") {
 		p.req.Comments = append(p.req.Comments, strings.TrimSpace(line))
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 
 	line = removeComment(line)
 	if len(line) == 0 {
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 
 	if isValidMethodLine(line) {
-		return StateMethod
+		return StateMethod, nil
 	}
 
-	return StatePreMethod
+	// If we have non-empty, non-comment content that's not a valid method line,
+	// it's likely malformed content
+	if len(strings.TrimSpace(line)) > 0 {
+		return StatePreMethod, errors.New("unexpected content: line does not match expected format")
+	}
+
+	return StatePreMethod, nil
 }
 
 // The Full GET or POST Statement
-func (p *Parser) parseMethod(line string) parserState {
+func (p *Parser) parseMethod(line string) (parserState, error) {
 	//fmt.Println("Method:" + line)
 
 	if strings.HasPrefix(line, "###") {
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 
 	if !isValidMethodLine(line) {
-		return StateHeader
+		return StateHeader, nil
 	}
 
 	if strings.HasPrefix(line, "http") {
@@ -154,30 +160,37 @@ func (p *Parser) parseMethod(line string) parserState {
 			}
 		}
 	}
-	p.req.URL += strings.TrimSpace(line)
 
-	return StateMethod
+	// Validate that URL exists after method
+	url := strings.TrimSpace(line)
+	if len(url) == 0 {
+		return StateMethod, errors.New("HTTP method must be followed by a URL")
+	}
+
+	p.req.URL += url
+
+	return StateMethod, nil
 }
 
 // The Headers after the GET or POST Statement
-func (p *Parser) parseHeader(line string) parserState {
+func (p *Parser) parseHeader(line string) (parserState, error) {
 	//fmt.Println("Header:" + line)
 	if strings.HasPrefix(line, "###") {
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 
 	if len(strings.TrimSpace(line)) == 0 {
-		return StateBody
+		return StateBody, nil
 	}
 
 	line = removeComment(line)
 	if len(line) == 0 {
-		return StateHeader
+		return StateHeader, nil
 	}
 
 	kv := strings.Split(line, ":")
 	if len(kv) != 2 {
-		return StateHeader
+		return StateHeader, errors.New("invalid header format: headers must contain a colon separator")
 	}
 	h := HTTPHeader{
 		Key:   strings.TrimSpace(kv[0]),
@@ -185,42 +198,42 @@ func (p *Parser) parseHeader(line string) parserState {
 	}
 	p.req.Header = append(p.req.Header, h)
 
-	return StateHeader
+	return StateHeader, nil
 }
 
-func (p *Parser) parseBody(line string) parserState {
+func (p *Parser) parseBody(line string) (parserState, error) {
 	//fmt.Println("Body:" + line)
 
 	if strings.HasPrefix(line, "###") {
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 	if strings.HasPrefix(line, "> {%") {
-		return StateResponseFunction
+		return StateResponseFunction, nil
 	}
 	if len(strings.TrimSpace(line)) == 0 {
-		return StateBody
+		return StateBody, nil
 	}
 
 	p.req.Body += line + "\n"
 
-	return StateBody
+	return StateBody, nil
 }
 
-func (p *Parser) parseResponseFunction(line string) parserState {
+func (p *Parser) parseResponseFunction(line string) (parserState, error) {
 	//fmt.Println("Responsefunction:" + line)
 
 	if strings.HasPrefix(line, "###") {
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 	if len(strings.TrimSpace(line)) == 0 {
-		return StateBody
+		return StateBody, nil
 	}
 	p.req.ResponseFunction += line + "\n"
 
-	return StateResponseFunction
+	return StateResponseFunction, nil
 }
 
-func (p *Parser) parsePart(part parserState, line string) parserState {
+func (p *Parser) parsePart(part parserState, line string) (parserState, error) {
 	switch part {
 	case StatePreMethod:
 		return p.parsePre(line)
@@ -233,7 +246,7 @@ func (p *Parser) parsePart(part parserState, line string) parserState {
 	case StateResponseFunction:
 		return p.parseResponseFunction(line)
 	default:
-		return StatePreMethod
+		return StatePreMethod, nil
 	}
 }
 
@@ -269,8 +282,18 @@ func (p *Parser) parse(addKeepAlive bool) error {
 	for _, line := range strings.Split(strings.ReplaceAll(p.content, "\r\n", "\n"), "\n") {
 		//fmt.Println(scanner.Text())
 
-		newpart := p.parsePart(part, line)
+		newpart, err := p.parsePart(part, line)
+		if err != nil {
+			return err
+		}
 		if part != StatePreMethod && newpart == StatePreMethod {
+			// Validate the request before adding it
+			if len(p.req.Method) == 0 {
+				return errors.New("incomplete request: no HTTP method found")
+			}
+			if len(p.req.URL) == 0 {
+				return errors.New("incomplete request: no URL found")
+			}
 			fillParameters(&p.req)
 			req, err := PrepareRequest(p.req, addKeepAlive)
 			if err != nil {
@@ -280,7 +303,10 @@ func (p *Parser) parse(addKeepAlive bool) error {
 			p.req = NewHTTPFile()
 		}
 		if newpart != part {
-			newpart = p.parsePart(newpart, line)
+			newpart, err = p.parsePart(newpart, line)
+			if err != nil {
+				return err
+			}
 		}
 
 		part = newpart
