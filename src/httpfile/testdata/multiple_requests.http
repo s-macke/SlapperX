@@ -1,0 +1,9 @@
+GET http://example.com/first
+Header1: value1
+
+###
+POST http://example.com/second
+Header2: value2
+
+{"foo": "bar"}
+

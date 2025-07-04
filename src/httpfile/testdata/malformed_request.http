@@ -1,0 +1,8 @@
+GET
+HeaderWithoutColon
+
+POST http://example.com
+Header: value
+
+Body without method
+

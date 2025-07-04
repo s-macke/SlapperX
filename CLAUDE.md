@@ -53,6 +53,13 @@ go test ./src/...
 - Request parsing from .http files (`httpfile/` package)
 - Round-robin request selection using atomic counters
 - Time-slotted response data collection for continuous histogram updates
+- URL validation ensures all URLs have proper scheme and host before processing
+
+**Error Handling:**
+- Custom `ParseError` structure in `httpfile/parseerror.go` provides structured error types
+- Supports Go's `errors.Is()` and `errors.As()` methods for error type checking
+- Error types include: `ErrUnexpectedContent`, `ErrMissingURL`, `ErrInvalidURL`, `ErrInvalidHeader`, `ErrIncompleteRequest`, `ErrMissingMethod`, `ErrTemplateError`, `ErrJSONError`
+- URL validation occurs at request finalization and checks for valid scheme and host components
 
 ## Request Format
 

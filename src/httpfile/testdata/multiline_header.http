@@ -1,0 +1,6 @@
+GET http://example.com/multiline
+X-Custom-Header: value1
+ value2
+	value3
+
+

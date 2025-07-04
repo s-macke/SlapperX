@@ -1,0 +1,6 @@
+POST http://example.com/api/resource
+Content-Type: application/json
+Authorization: Bearer token123
+
+{"key": "value"}
+
