@@ -344,12 +344,87 @@ func TestParseErrorStringRepresentation(t *testing.T) {
 			err:      NewParseError(ErrUnexpectedContent, "test message", ""),
 			expected: "parse error: test message",
 		},
+		{
+			name: "with line and number",
+			err: &ParseError{
+				Type:       ErrUnexpectedContent,
+				Message:    "test message",
+				Line:       "test line",
+				LineNumber: 42,
+			},
+			expected: `parse error: test message (line 42: "test line")`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.err.Error() != tt.expected {
 				t.Errorf("Expected %q, got %q", tt.expected, tt.err.Error())
+			}
+		})
+	}
+}
+
+func TestLineNumberReporting(t *testing.T) {
+	// Test that line numbers are properly reported in parse errors
+	tests := []struct {
+		name           string
+		httpContent    string
+		expectedLine   int
+		expectedErrMsg string
+	}{
+		{
+			name: "invalid_url_line_2",
+			httpContent: `# Comment
+GET invalid-url-no-scheme`,
+			expectedLine:   2,
+			expectedErrMsg: "invalid-url-no-scheme",
+		},
+		{
+			name: "invalid_header_line_3",
+			httpContent: `GET http://example.com
+# Comment  
+invalid header without colon`,
+			expectedLine:   3,
+			expectedErrMsg: "invalid header without colon",
+		},
+		{
+			name: "unexpected_content_line_4",
+			httpContent: `# Comment
+### Separator
+# Another comment
+random unexpected content`,
+			expectedLine:   4,
+			expectedErrMsg: "random unexpected content",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := newParser(tt.httpContent)
+			err := parser.parse(false)
+			if err == nil {
+				t.Fatalf("Expected an error but got none")
+			}
+
+			var parseErr *ParseError
+			if !errors.As(err, &parseErr) {
+				t.Fatalf("Expected ParseError, got %T", err)
+			}
+
+			if parseErr.LineNumber != tt.expectedLine {
+				t.Errorf("Expected line number %d, got %d", tt.expectedLine, parseErr.LineNumber)
+			}
+
+			if !strings.Contains(parseErr.Line, tt.expectedErrMsg) {
+				t.Errorf("Expected error line to contain %q, got %q", tt.expectedErrMsg, parseErr.Line)
+			}
+
+			// Check that the error message includes the line number
+			errorMsg := parseErr.Error()
+			expectedLineMsg := strings.Contains(errorMsg, "line 2:")
+			if tt.expectedLine == 2 && !expectedLineMsg {
+				t.Errorf("Expected error message to include line number, got: %s", errorMsg)
 			}
 		})
 	}

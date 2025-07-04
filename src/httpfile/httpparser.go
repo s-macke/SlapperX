@@ -34,9 +34,10 @@ const (
 )
 
 type Parser struct {
-	reqs    []http.Request
-	req     HTTPFile
-	content string
+	reqs           []http.Request
+	req            HTTPFile
+	content        string
+	currentLineNum int
 }
 
 func newParser(r string) (p *Parser) {
@@ -300,24 +301,26 @@ func fillParameters(request *HTTPFile) {
 
 func (p *Parser) parse(addKeepAlive bool) error {
 	part := StatePreMethod
+	p.currentLineNum = 0
 
 	for _, line := range strings.Split(strings.ReplaceAll(p.content, "\r\n", "\n"), "\n") {
+		p.currentLineNum++
 		//fmt.Println(scanner.Text())
 
 		newpart, err := p.parsePart(part, line)
 		if err != nil {
-			return err
+			return EnrichParseError(err, line, p.currentLineNum)
 		}
 		if part != StatePreMethod && newpart == StatePreMethod {
 			// Validate the request before adding it
 			if len(p.req.Method) == 0 {
-				return NewParseError(ErrMissingMethod, "no HTTP method found", "")
+				return EnrichParseError(NewParseError(ErrMissingMethod, "no HTTP method found", ""), line, p.currentLineNum)
 			}
 			if len(p.req.URL) == 0 {
-				return NewParseError(ErrIncompleteRequest, "no URL found", "")
+				return EnrichParseError(NewParseError(ErrIncompleteRequest, "no URL found", ""), line, p.currentLineNum)
 			}
 			if err := validateURL(p.req.URL); err != nil {
-				return err
+				return EnrichParseError(err, line, p.currentLineNum)
 			}
 			fillParameters(&p.req)
 			req, err := PrepareRequest(p.req, addKeepAlive)
@@ -330,7 +333,7 @@ func (p *Parser) parse(addKeepAlive bool) error {
 		if newpart != part {
 			newpart, err = p.parsePart(newpart, line)
 			if err != nil {
-				return err
+				return EnrichParseError(err, line, p.currentLineNum)
 			}
 		}
 
@@ -338,7 +341,7 @@ func (p *Parser) parse(addKeepAlive bool) error {
 	}
 	if len(p.req.Method) != 0 {
 		if err := validateURL(p.req.URL); err != nil {
-			return err
+			return EnrichParseError(err, "", p.currentLineNum)
 		}
 		fillParameters(&p.req)
 		req, err := PrepareRequest(p.req, addKeepAlive)
@@ -373,7 +376,7 @@ func HTTPFileParser(path string, overridesPath string, addKeepAlive bool) ([]htt
 	p := newParser(buff.String())
 	err = p.parse(addKeepAlive)
 	if err != nil {
-		return nil, NewParseErrorWithCause(ErrIncompleteRequest, "failed to parse HTTP content", "", err)
+		return nil, err
 	}
 
 	return p.reqs, nil

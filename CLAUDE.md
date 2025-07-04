@@ -60,6 +60,8 @@ go test ./src/...
 - Supports Go's `errors.Is()` and `errors.As()` methods for error type checking
 - Error types include: `ErrUnexpectedContent`, `ErrMissingURL`, `ErrInvalidURL`, `ErrInvalidHeader`, `ErrIncompleteRequest`, `ErrMissingMethod`, `ErrTemplateError`, `ErrJSONError`
 - URL validation occurs at request finalization and checks for valid scheme and host components
+- Parse errors include line numbers and line content for precise error location reporting
+- Error messages format: `parse error: <message> (line <number>: "<content>")`
 
 ## Request Format
 

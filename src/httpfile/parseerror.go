@@ -21,14 +21,18 @@ const (
 
 // ParseError is a custom error type for HTTP file parsing errors
 type ParseError struct {
-	Type    ParseErrorType
-	Message string
-	Line    string
-	Err     error
+	Type       ParseErrorType
+	Message    string
+	Line       string
+	LineNumber int
+	Err        error
 }
 
 func (e *ParseError) Error() string {
 	if e.Line != "" {
+		if e.LineNumber > 0 {
+			return fmt.Sprintf("parse error: %s (line %d: %q)", e.Message, e.LineNumber, e.Line)
+		}
 		return fmt.Sprintf("parse error: %s (line: %q)", e.Message, e.Line)
 	}
 	return fmt.Sprintf("parse error: %s", e.Message)
@@ -62,4 +66,17 @@ func NewParseErrorWithCause(errType ParseErrorType, message string, line string,
 		Line:    line,
 		Err:     err,
 	}
+}
+
+// EnrichParseError enriches an existing ParseError with line context if it's missing
+func EnrichParseError(err error, line string, lineNumber int) error {
+	if parseErr, ok := err.(*ParseError); ok {
+		if parseErr.Line == "" {
+			parseErr.Line = line
+		}
+		if parseErr.LineNumber == 0 {
+			parseErr.LineNumber = lineNumber
+		}
+	}
+	return err
 }
